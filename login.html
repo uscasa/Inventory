@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>US Casa — Sign In</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy-dark: #111d42; --accent: #2d4fbd; --accent-glow: #3a63e8;
+      --white: #fff; --muted: #8b9abf; --border: rgba(255,255,255,0.1); --error: #e85b5b;
+    }
+    html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(--navy-dark); color: var(--white); overflow: hidden; }
+    body::before {
+      content: ''; position: fixed; inset: 0;
+      background-image: linear-gradient(rgba(45,79,189,0.12) 1px, transparent 1px), linear-gradient(90deg, rgba(45,79,189,0.12) 1px, transparent 1px);
+      background-size: 48px 48px; animation: gridPan 30s linear infinite; pointer-events: none;
+    }
+    @keyframes gridPan { from { background-position: 0 0; } to { background-position: 48px 48px; } }
+    body::after { content: ''; position: fixed; inset: 0; background: radial-gradient(ellipse 70% 60% at 50% 40%, rgba(45,79,189,0.28) 0%, transparent 70%); pointer-events: none; }
+    .wrap { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; }
+    .card {
+      position: relative; z-index: 10; width: 420px;
+      background: rgba(255,255,255,0.04); backdrop-filter: blur(20px);
+      border: 1px solid var(--border); border-radius: 20px; padding: 44px 40px 40px;
+      box-shadow: 0 32px 64px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06) inset;
+      animation: cardIn .5s cubic-bezier(.22,1,.36,1) both;
+    }
+    @keyframes cardIn { from { opacity:0; transform:translateY(24px) scale(.97); } to { opacity:1; transform:none; } }
+    .logo { display: flex; align-items: center; gap: 10px; margin-bottom: 32px; }
+    .logo-icon { width: 40px; height: 40px; background: linear-gradient(135deg,var(--accent-glow),#1a2b5e); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; box-shadow: 0 4px 16px rgba(58,99,232,0.4); }
+    .logo-text { font-size: 22px; font-weight: 700; }
+    .logo-text span { color: var(--muted); font-weight: 400; font-size: 14px; display: block; margin-top: -2px; }
+    h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 6px; }
+    .subtitle { font-size: 14px; color: var(--muted); margin-bottom: 32px; }
+    .field { margin-bottom: 16px; }
+    label { display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 8px; }
+    .input-wrap { position: relative; }
+    .input-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 16px; pointer-events: none; opacity: 0.5; }
+    input { width: 100%; padding: 13px 14px 13px 40px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: var(--white); font-family: 'DM Sans', sans-serif; font-size: 15px; outline: none; transition: border-color .2s, background .2s, box-shadow .2s; }
+    input::placeholder { color: rgba(255,255,255,0.25); }
+    input:focus { border-color: var(--accent-glow); background: rgba(58,99,232,0.1); box-shadow: 0 0 0 3px rgba(58,99,232,0.2); }
+    input.error-field { border-color: var(--error); box-shadow: 0 0 0 3px rgba(232,91,91,0.15); }
+    .toggle-pw { position: absolute; right: 13px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--muted); cursor: pointer; font-size: 14px; padding: 4px; }
+    .toggle-pw:hover { color: var(--white); }
+    .error-msg { display: none; background: rgba(232,91,91,0.12); border: 1px solid rgba(232,91,91,0.3); border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #f4a0a0; margin-bottom: 18px; }
+    .error-msg.show { display: block; animation: shake .4s cubic-bezier(.36,.07,.19,.97); }
+    @keyframes shake { 10%,90%{transform:translateX(-2px)} 20%,80%{transform:translateX(4px)} 30%,50%,70%{transform:translateX(-6px)} 40%,60%{transform:translateX(6px)} }
+    .btn { width: 100%; padding: 14px; background: linear-gradient(135deg,var(--accent-glow),var(--accent)); color:#fff; border:none; border-radius:10px; font-family:'DM Sans',sans-serif; font-size:15px; font-weight:600; cursor:pointer; margin-top:8px; box-shadow:0 4px 20px rgba(58,99,232,0.4); transition:transform .15s,box-shadow .15s; position:relative; overflow:hidden; }
+    .btn:hover { transform:translateY(-1px); box-shadow:0 8px 28px rgba(58,99,232,0.5); }
+    .btn:active { transform:translateY(1px); }
+    .btn:disabled { opacity:.6; pointer-events:none; }
+    .btn .spinner { display:none; width:16px; height:16px; border:2px solid rgba(255,255,255,.4); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; position:absolute; right:18px; top:50%; transform:translateY(-50%); }
+    @keyframes spin { to { transform:translateY(-50%) rotate(360deg); } }
+    .btn.loading .spinner { display:block; }
+    .divider { text-align:center; color:var(--muted); font-size:12px; margin:24px 0 0; padding-top:20px; border-top:1px solid var(--border); }
+    .footer { margin-top:24px; font-size:12px; color:rgba(139,154,191,0.5); text-align:center; z-index:10; }
+    #redirect-screen { display:none; flex-direction:column; align-items:center; gap:16px; z-index:10; animation:cardIn .4s both; }
+    .big-check { width:64px; height:64px; background:linear-gradient(135deg,#34d399,#10b981); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:28px; box-shadow:0 8px 24px rgba(16,185,129,0.4); animation:popIn .4s cubic-bezier(.34,1.56,.64,1) .1s both; }
+    @keyframes popIn { from{opacity:0;transform:scale(.4)} to{opacity:1;transform:scale(1)} }
+    #redirect-screen p { color:var(--muted); font-size:14px; }
+    #redirect-screen strong { font-size:20px; display:block; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card" id="login-card">
+    <div class="logo">
+      <div class="logo-icon">🏠</div>
+      <div class="logo-text">US Casa <span>Inventory Management</span></div>
+    </div>
+    <h1>Welcome back</h1>
+    <p class="subtitle">Sign in to access your inventory dashboard.</p>
+    <div class="error-msg" id="error-msg"></div>
+    <div class="field">
+      <label for="email">Email</label>
+      <div class="input-wrap">
+        <span class="input-icon">✉️</span>
+        <input type="email" id="email" placeholder="you@example.com" autocomplete="email"/>
+      </div>
+    </div>
+    <div class="field">
+      <label for="password">Password</label>
+      <div class="input-wrap">
+        <span class="input-icon">🔑</span>
+        <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password"/>
+        <button class="toggle-pw" type="button" id="toggle-pw">👁</button>
+      </div>
+    </div>
+    <button class="btn" id="login-btn" onclick="doLogin()">
+      Sign In <div class="spinner"></div>
+    </button>
+    <div class="divider">US Casa · Internal Tool · Authorized Access Only</div>
+  </div>
+  <div id="redirect-screen">
+    <div class="big-check">✓</div>
+    <strong>Access Granted</strong>
+    <p>Redirecting to your dashboard…</p>
+  </div>
+</div>
+<div class="footer">© US Casa Inventory · All rights reserved</div>
+<script>
+  // ── CONFIGURATION — fill these in ──────────────────────────
+  const SUPABASE_URL  = 'https://qcnjfqgdlptsnuqskxfi.supabase.co';
+  const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFjbmpmcWdkbHB0c251cXNreGZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyOTg1MzYsImV4cCI6MjA4OTg3NDUzNn0.7xGOPOLqgoDa1_7pB33QU4XnxKPKoJIjOKNSvdHhEXI';
+  const APP_URL       = 'https://uscasa.github.io/Inventory/index.html';
+  // ───────────────────────────────────────────────────────────
+
+  const { createClient } = supabase;
+  const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
+
+  (async () => {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) redirectToApp();
+  })();
+
+  document.getElementById('toggle-pw').addEventListener('click', function () {
+    const pw = document.getElementById('password');
+    const isText = pw.type === 'text';
+    pw.type = isText ? 'password' : 'text';
+    this.textContent = isText ? '👁' : '🙈';
+  });
+
+  ['email','password'].forEach(id =>
+    document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); })
+  );
+
+  async function doLogin() {
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const btn = document.getElementById('login-btn');
+    const errEl = document.getElementById('error-msg');
+
+    errEl.classList.remove('show');
+    ['email','password'].forEach(id => document.getElementById(id).classList.remove('error-field'));
+
+    if (!email || !password) {
+      showError('Please enter your email and password.');
+      return;
+    }
+
+    btn.classList.add('loading');
+    btn.disabled = true;
+
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+
+    btn.classList.remove('loading');
+    btn.disabled = false;
+
+    if (error) {
+      showError(error.message.includes('Invalid') ? 'Incorrect email or password.' : error.message);
+      document.getElementById('password').value = '';
+      ['email','password'].forEach(id => document.getElementById(id).classList.add('error-field'));
+    } else {
+      document.getElementById('login-card').style.display = 'none';
+      document.getElementById('redirect-screen').style.display = 'flex';
+      setTimeout(redirectToApp, 1200);
+    }
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('error-msg');
+    el.textContent = '⚠️ ' + msg;
+    el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+  }
+
+  function redirectToApp() { window.location.href = APP_URL; }
+</script>
+</body>
+</html>
