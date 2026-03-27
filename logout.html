@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8"/>
+  <title>Signing out...</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body { margin:0; background:#111d42; display:flex; align-items:center; justify-content:center; height:100vh; font-family:sans-serif; color:#fff; }
+    p { font-size:16px; opacity:0.6; }
+  </style>
+</head>
+<body>
+<p>Signing you out...</p>
+<script>
+  const sb = supabase.createClient(
+    'https://qcnjfqgdlptsnuqskxfi.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFjbmpmcWdkbHB0c251cXNreGZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyOTg1MzYsImV4cCI6MjA4OTg3NDUzNn0.7xGOPOLqgoDa1_7pB33QU4XnxKPKoJIjOKNSvdHhEXI'
+  );
+  sb.auth.signOut().then(() => {
+    window.location.href = 'https://uscasa.github.io/Inventory/login.html';
+  });
+</script>
+</body>
+</html>
