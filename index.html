@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>US Casa Inventory</title>
+<link rel="manifest" href="manifest.json">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --navy:#1a2744;--navy2:#1e2d52;--blue:#2563eb;--blue2:#1d4ed8;
+  --green:#16a34a;--red:#dc2626;--yellow:#d97706;--orange:#ea580c;
+  --text:#1e293b;--muted:#64748b;--border:#e2e8f0;--bg:#f1f5f9;
+  --white:#fff;--accent:#2563eb;
+}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px}
+
+/* TOP NAV */
+.topnav{background:var(--navy);height:48px;display:flex;align-items:center;padding:0 16px;gap:4px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.topnav .brand{color:#fff;font-weight:700;font-size:15px;margin-right:12px;display:flex;align-items:center;gap:6px}
+.topnav .brand span{font-size:18px}
+.nav-item{color:#94a3b8;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500;display:flex;align-items:center;gap:5px;border:none;background:none;transition:all .15s}
+.nav-item:hover{color:#fff;background:rgba(255,255,255,.1)}
+.nav-item.active{color:#fff;background:var(--blue)}
+.nav-item .icon{font-size:14px}
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.sync-badge{background:rgba(255,255,255,.1);color:#94a3b8;padding:3px 10px;border-radius:20px;font-size:11px;display:flex;align-items:center;gap:4px}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:#94a3b8}
+.sync-dot.ok{background:var(--green)}
+.sync-dot.err{background:var(--red)}
+
+/* PAGE */
+.page{display:none;padding:20px;max-width:1400px;margin:0 auto}
+.page.active{display:block}
+
+/* STATS ROW */
+.stats-row{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.stat-box{background:var(--white);border:1px solid var(--border);border-radius:8px;padding:12px 20px;min-width:100px}
+.stat-box .val{font-size:24px;font-weight:700;line-height:1}
+.stat-box .lbl{font-size:11px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.5px}
+.stat-box.green .val{color:var(--green)}
+.stat-box.blue .val{color:var(--blue)}
+.stat-box.red .val{color:var(--red)}
+.stat-box.orange .val{color:var(--orange)}
+
+/* ADD STOCK BACK */
+.addback-bar{background:var(--white);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:16px}
+.addback-bar .title{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+.addback-row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.field input,.field select{height:34px;border:1px solid var(--border);border-radius:6px;padding:0 10px;font-size:13px;color:var(--text);background:var(--white);outline:none;min-width:80px}
+.field input:focus,.field select:focus{border-color:var(--blue);box-shadow:0 0 0 2px rgba(37,99,235,.1)}
+.field input[type=text]{min-width:160px}
+.unit-toggle{display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;height:34px}
+.unit-toggle button{padding:0 14px;border:none;background:var(--white);color:var(--muted);font-size:13px;cursor:pointer;font-weight:500}
+.unit-toggle button.active{background:var(--blue);color:#fff}
+.btn{height:34px;padding:0 16px;border-radius:6px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:all .15s}
+.btn-orange{background:#ea580c;color:#fff}
+.btn-orange:hover{background:#c2410c}
+.btn-blue{background:var(--blue);color:#fff}
+.btn-blue:hover{background:var(--blue2)}
+.btn-sm{height:28px;padding:0 10px;font-size:12px}
+.btn-red{background:var(--red);color:#fff}
+.btn-green{background:var(--green);color:#fff}
+.btn-gray{background:var(--bg);border:1px solid var(--border);color:var(--text)}
+
+/* FILTER ROW */
+.filter-row{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+.search-input{height:34px;border:1px solid var(--border);border-radius:6px;padding:0 12px;font-size:13px;outline:none;min-width:220px;background:var(--white)}
+.search-input:focus{border-color:var(--blue)}
+.filter-btn{height:28px;padding:0 12px;border-radius:20px;border:1px solid var(--border);background:var(--white);color:var(--muted);font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:4px}
+.filter-btn.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.filter-btn .dot{width:7px;height:7px;border-radius:50%}
+
+/* INVENTORY TABLE */
+.inv-table-wrap{background:var(--white);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.inv-table{width:100%;border-collapse:collapse}
+.inv-table th{padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid var(--border);background:var(--white);cursor:pointer;white-space:nowrap;user-select:none}
+.inv-table th:hover{color:var(--text)}
+.inv-table th .sort-icon{margin-left:4px;opacity:.4}
+.inv-table td{padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:middle}
+.inv-table tr:last-child td{border-bottom:none}
+.inv-table tr:hover td{background:#f8fafc}
+.sku-cell{font-weight:600;font-size:13px}
+.pack-main{font-weight:700;font-size:14px}
+.pack-sub{font-size:11px;color:var(--muted);margin-top:1px}
+.pack-bar{height:3px;border-radius:2px;background:var(--border);margin-top:4px;width:80px}
+.pack-bar-fill{height:100%;border-radius:2px;background:var(--blue)}
+.pack-bar-fill.low{background:var(--yellow)}
+.pack-bar-fill.critical{background:var(--red)}
+.status-badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;text-transform:uppercase}
+.status-ok{background:#dcfce7;color:#15803d}
+.status-low{background:#fef3c7;color:#b45309}
+.status-critical{background:#fee2e2;color:#b91c1c}
+.status-out{background:#f1f5f9;color:#94a3b8}
+
+/* PALLET PAGE */
+.pallet-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.pallet-card{background:var(--white);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.pallet-card-header{background:var(--navy);color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center}
+.pallet-card-header .pnum{font-size:14px;font-weight:700}
+.pallet-card-header .pstats{font-size:12px;color:#94a3b8;text-align:right}
+.pallet-card-header .pstats .pc{color:#fff;font-weight:700}
+.pallet-sku-row{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;border-bottom:1px solid var(--border)}
+.pallet-sku-row:last-child{border-bottom:none}
+.pallet-sku-row .sku-info .sku-name{font-size:12px;font-weight:600}
+.pallet-sku-row .sku-info .sku-meta{font-size:11px;color:var(--muted)}
+.pallet-sku-row .sku-qty{text-align:right}
+.pallet-sku-row .sku-qty .cartons{font-size:13px;font-weight:700;color:var(--blue)}
+.pallet-sku-row .sku-qty .open{font-size:11px;color:var(--yellow);margin-top:1px}
+
+/* LOG TABLE */
+.log-table{width:100%;border-collapse:collapse}
+.log-table th{padding:8px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--border)}
+.log-table td{padding:8px 12px;border-bottom:1px solid var(--border);font-size:13px}
+.log-table tr:hover td{background:#f8fafc}
+.type-deduct{color:var(--red);font-weight:600}
+.type-addback{color:var(--green);font-weight:600}
+
+/* ALERTS */
+.alert-card{background:var(--white);border:1px solid var(--border);border-radius:8px;margin-bottom:8px;overflow:hidden}
+.alert-card-header{padding:10px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+.alert-section-title{font-size:13px;font-weight:700;padding:12px 0 8px}
+
+/* SCAN */
+.scan-box{background:var(--white);border:1px solid var(--border);border-radius:8px;padding:20px;max-width:500px}
+.scan-video-wrap{background:#000;border-radius:6px;overflow:hidden;margin-bottom:12px;min-height:180px;display:flex;align-items:center;justify-content:center}
+#video{width:100%;display:none}
+
+/* PICK */
+.pick-card{background:var(--white);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px}
+.pick-step-item{border-left:3px solid var(--blue);padding:8px 12px;background:#f8fafc;border-radius:0 6px 6px 0;margin-bottom:6px}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;display:none;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--white);border-radius:10px;padding:20px;width:90%;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.modal h3{font-size:16px;font-weight:700;margin-bottom:14px}
+.modal .form-row{margin-bottom:10px}
+.modal label{font-size:12px;color:var(--muted);font-weight:600;display:block;margin-bottom:4px;text-transform:uppercase}
+.modal input,.modal select{width:100%;height:36px;border:1px solid var(--border);border-radius:6px;padding:0 10px;font-size:13px;outline:none}
+.modal input:focus,.modal select:focus{border-color:var(--blue)}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+
+/* TOAST */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none}
+#toast.show{opacity:1}
+
+/* RESPONSIVE */
+@media(max-width:600px){
+  .topnav .nav-item span:not(.icon){display:none}
+  .stats-row{gap:8px}
+  .stat-box{padding:10px 14px;min-width:70px}
+  .stat-box .val{font-size:18px}
+  .addback-row{gap:6px}
+  .pallet-grid{grid-template-columns:1fr}
+  .inv-table th:nth-child(3),.inv-table td:nth-child(3){display:none}
+}
+</style>
+</head>
+<body>
+
+<!-- TOP NAV -->
+<nav class="topnav">
+  <div class="brand"><span>🏠</span> US Casa</div>
+  <button class="nav-item active" data-page="inventory"><span class="icon">📋</span> <span>Inventory</span></button>
+  <button class="nav-item" data-page="pick"><span class="icon">✅</span> <span>Pick</span></button>
+  <button class="nav-item" data-page="pallets"><span class="icon">🏭</span> <span>Pallets</span></button>
+  <button class="nav-item" data-page="alerts"><span class="icon">🚨</span> <span>Alerts</span></button>
+  <button class="nav-item" data-page="log"><span class="icon">📋</span> <span>Log</span></button>
+  <button class="nav-item" data-page="reports"><span class="icon">📊</span> <span>Reports</span></button>
+  
+  
+  <div class="nav-right">
+    <div class="sync-badge"><div class="sync-dot" id="sync-dot"></div><span id="sync-label">Syncing...</span></div>
+  </div>
+</nav>
+
+<!-- INVENTORY PAGE -->
+<div id="page-inventory" class="page active">
+  <!-- Stats -->
+  <div class="stats-row" id="stats-row"></div>
+
+  <!-- Add Stock Back -->
+  <div class="addback-bar">
+    <div class="title">Add Stock Back</div>
+    <div class="addback-row">
+      <div class="field">
+        <label>SKU</label>
+        <input type="text" id="ab-sku" placeholder="Search SKU..." list="sku-dl">
+        <datalist id="sku-dl"></datalist>
+      </div>
+      <div class="field">
+        <label>Unit</label>
+        <div class="unit-toggle">
+          <button class="active" id="ab-unit-packs" onclick="setAbUnit('packs')">Packs</button>
+          <button id="ab-unit-cartons" onclick="setAbUnit('cartons')">Cartons</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Qty</label>
+        <input type="number" id="ab-qty" value="1" min="1" style="width:70px">
+      </div>
+      <div class="field">
+        <label>Pallet (opt)</label>
+        <select id="ab-pallet" style="width:110px"></select>
+      </div>
+      <div class="field">
+        <label>Reason</label>
+        <select id="ab-reason" style="width:110px">
+          <option>Returned</option>
+          <option>Count Fix</option>
+          <option>Restock</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Note</label>
+        <input type="text" id="ab-note" placeholder="Optional..." style="width:130px">
+      </div>
+      <button class="btn btn-orange" onclick="addStockBack()">Add Back</button>
+    </div>
+  </div>
+
+  <!-- Filter Row -->
+  <div class="filter-row">
+    <input class="search-input" type="text" id="inv-search" placeholder="🔍  Search SKU, color, size...">
+    <button class="filter-btn active" data-f="all" onclick="setInvFilter(this,'all')">All</button>
+    <button class="filter-btn" data-f="critical" onclick="setInvFilter(this,'critical')"><span class="dot" style="background:var(--red)"></span> Critical</button>
+    <button class="filter-btn" data-f="low" onclick="setInvFilter(this,'low')"><span class="dot" style="background:var(--yellow)"></span> Low</button>
+    <button class="filter-btn" data-f="out" onclick="setInvFilter(this,'out')"><span class="dot" style="background:#000"></span> Out</button>
+    <button class="filter-btn" data-f="ok" onclick="setInvFilter(this,'ok')"><span class="dot" style="background:var(--green)"></span> OK</button>
+  </div>
+
+  <!-- Table -->
+  <div class="inv-table-wrap">
+    <table class="inv-table">
+      <thead>
+        <tr>
+          <th onclick="sortInv('sku')">SKU <span class="sort-icon">↕</span></th>
+          <th onclick="sortInv('color')">Color <span class="sort-icon">↕</span></th>
+          <th onclick="sortInv('size')">Size <span class="sort-icon">↕</span></th>
+          <th onclick="sortInv('packs')">Packs <span class="sort-icon">↕</span></th>
+          <th onclick="sortInv('cartons')">Cartons <span class="sort-icon">↕</span></th>
+          <th>PKS/CTN</th>
+          <th onclick="sortInv('status')">Status <span class="sort-icon">↕</span></th>
+        </tr>
+      </thead>
+      <tbody id="inv-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- PALLETS PAGE -->
+<div id="page-pallets" class="page">
+  <div class="filter-row">
+    <input class="search-input" type="text" id="pallet-search" placeholder="🔍  Search pallet # or SKU...">
+  </div>
+  <div class="pallet-grid" id="pallet-grid"></div>
+</div>
+
+<!-- ALERTS PAGE -->
+<div id="page-alerts" class="page">
+  <div id="alerts-content"></div>
+</div>
+
+<!-- LOG PAGE -->
+<div id="page-log" class="page">
+  <div class="filter-row" style="margin-bottom:12px">
+    <button class="filter-btn active" data-lf="all" onclick="setLogFilter(this,'all')">All</button>
+    <button class="filter-btn" data-lf="Amazon" onclick="setLogFilter(this,'Amazon')">Amazon</button>
+    <button class="filter-btn" data-lf="TikTok" onclick="setLogFilter(this,'TikTok')">TikTok</button>
+    <button class="filter-btn" data-lf="addback" onclick="setLogFilter(this,'addback')">Add Back</button>
+    <button class="btn btn-sm btn-gray" style="margin-left:auto" onclick="undoLast()">↩ Undo Last</button>
+  </div>
+  <div class="inv-table-wrap">
+    <table class="log-table">
+      <thead><tr>
+        <th>Time</th><th>SKU</th><th>Type</th><th>Qty</th><th>Unit</th><th>Channel</th><th>Note</th><th></th>
+      </tr></thead>
+      <tbody id="log-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- PICK PAGE -->
+<div id="page-pick" class="page">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:900px">
+    <div class="pick-card">
+      <h3 style="font-size:14px;font-weight:700;margin-bottom:12px">Build Pick Order</h3>
+      <div class="field" style="margin-bottom:8px"><label>Mode</label>
+        <select id="pick-mode" style="width:100%">
+          <option value="packs">Packs (open cartons first)</option>
+          <option value="cartons">Full Cartons</option>
+          <option value="fba">FBA (grouped by pallet)</option>
+        </select>
+      </div>
+      <div class="field" style="margin-bottom:8px"><label>Platform</label>
+        <select id="pick-platform" style="width:100%">
+          <option value="Amazon FBA">Amazon FBA</option>
+          <option value="TikTok Shop">TikTok Shop</option>
+          <option value="eBay">eBay</option>
+          <option value="Wholesale">Wholesale</option>
+        </select>
+      </div>
+      <div class="field" style="margin-bottom:8px"><label>SKU</label>
+        <input type="text" id="pick-sku" list="sku-dl2" placeholder="Search SKU..." style="width:100%">
+        <datalist id="sku-dl2"></datalist>
+      </div>
+      <div class="field" style="margin-bottom:12px"><label>Qty</label>
+        <input type="number" id="pick-qty" value="1" min="1" style="width:100%">
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-blue" style="flex:1" onclick="addPickItem()">Add</button>
+        <button class="btn btn-gray" onclick="clearPick()">Clear</button>
+      </div>
+      <hr style="border:none;border-top:1px solid var(--border);margin:12px 0">
+      <div class="field" style="margin-bottom:8px"><label>Bulk Paste (SKU, qty per line)</label>
+        <textarea id="pick-bulk" style="width:100%;height:80px;border:1px solid var(--border);border-radius:6px;padding:8px;font-size:12px;resize:vertical" placeholder="GM-TWL-400-A-51, 24&#10;NM-TWL-500-W-71, 12"></textarea>
+      </div>
+      <button class="btn btn-gray" style="width:100%" onclick="parseBulk()">Parse Bulk</button>
+    </div>
+    <div>
+      <div id="pick-queue-wrap" style="display:none">
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px">Queue</div>
+        <div id="pick-queue-list" style="margin-bottom:10px"></div>
+        <button class="btn btn-blue" style="width:100%;margin-bottom:12px" onclick="generatePlan()">Generate Plan</button>
+      </div>
+      <div id="pick-plan-wrap" style="display:none">
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px">Pick Plan</div>
+        <div id="pick-plan-steps" style="margin-bottom:10px"></div>
+        <button class="btn btn-green" style="width:100%" onclick="confirmPick()">✅ Confirm & Deduct</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────
+const BASE_INV = [{"sku": "GM-TWL-400-A-51", "color": "Anthrazit", "size": "20x40", "totalCartons": 20, "totalPacks": 160, "ppc": 8, "cartonsIn": 17, "packsIn": 143, "scannedCartonsOut": 4, "scannedPacksOut": 1}, {"sku": "GM-TWL-400-A-71", "color": "Anthrazit", "size": "27x54", "totalCartons": 29, "totalPacks": 232, "ppc": 8, "cartonsIn": 26, "packsIn": 208, "scannedCartonsOut": 6, "scannedPacksOut": 0}, {"sku": "GM-TWL-400-S-51", "color": "Sand", "size": "20x40", "totalCartons": 10, "totalPacks": 80, "ppc": 8, "cartonsIn": 8, "packsIn": 64, "scannedCartonsOut": 4, "scannedPacksOut": 0}, {"sku": "GM-TWL-400-S-71", "color": "Sand", "size": "27x54", "totalCartons": 19, "totalPacks": 152, "ppc": 8, "cartonsIn": 18, "packsIn": 151, "scannedCartonsOut": 0, "scannedPacksOut": 0}, {"sku": "GM-TWL-400-W-51", "color": "White", "size": "20x40", "totalCartons": 20, "totalPacks": 160, "ppc": 8, "cartonsIn": 17, "packsIn": 143, "scannedCartonsOut": 4, "scannedPacksOut": 1}, {"sku": "GM-TWL-400-W-71", "color": "White", "size": "27x54", "totalCartons": 30, "totalPacks": 240, "ppc": 8, "cartonsIn": 27, "packsIn": 216, "scannedCartonsOut": 4, "scannedPacksOut": 0}, {"sku": "HB-C-TWL-400-DR-33", "color": "Dune Red", "size": "12x12", "totalCartons": 4, "totalPacks": 96, "ppc": 24, "cartonsIn": 3, "packsIn": 72, "scannedCartonsOut": 2, "scannedPacksOut": 0}, {"sku": "HB-C-TWL-400-DR-46", "color": "Dune Red", "size": "16x24", "totalCartons": 8, "totalPacks": 192, "ppc": 24, "cartonsIn": 7, "packsIn": 188, "scannedCartonsOut": 2, "scannedPacksOut": 4}, {"sku": "HB-C-TWL-400-DR-61", "color": "Dune Red", "size": "27x54", "totalCartons": 8, "totalPacks": 64, "ppc": 8, "cartonsIn": 5, "packsIn": 47, "scannedCartonsOut": 4, "scannedPacksOut": 0}, {"sku": "HB-C-TWL-400-DR-8M", "color": "Dune Red", "size": "8 pc set", "totalCartons": 5, "totalPacks": 60, "ppc": 12, "cartonsIn": 3, "packsIn": 46, "scannedCartonsOut": 2, "scannedPacksOut": 2}, {"sku": "HB-C-TWL-400-MG-33", "color": "Moss Green", "size": "12x12", "totalCartons": 4, "totalPacks": 96, "ppc": 24, "cartonsIn": 2, "packsIn": 71, "scannedCartonsOut": 2, "scannedPacksOut": 1}, {"sku": "HB-C-TWL-400-MG-46", "color": "Moss Green", "size": "16x24", "totalCartons": 10, "totalPacks": 240, "ppc": 24, "cartonsIn": 7, "packsIn": 186, "scannedCartonsOut": 2, "scannedPacksOut": 4}, {"sku": "HB-C-TWL-400-MG-61", "color": "Moss Green", "size": "27x54", "totalCartons": 10, "totalPacks": 80, "ppc": 8, "cartonsIn": 7, "packsIn": 56, "scannedCartonsOut": 6, "scannedPacksOut": 0}, {"sku": "HB-C-TWL-400-MG-8M", "color": "Moss Green", "size": "8 pc set", "totalCartons": 10, "totalPacks": 120, "ppc": 12, "cartonsIn": 8, "packsIn": 105, "scannedCartonsOut": 2, "scannedPacksOut": 3}, {"sku": "HB-C-TWL-400-SGY-33", "color": "Steel Grey", "size": "12x12", "totalCartons": 9, "totalPacks": 216, "ppc": 24, "cartonsIn": 8, "packsIn": 192, "scannedCartonsOut": 2, "scannedPacksOut": 0}, {"sku": "HB-C-TWL-400-SGY-46", "color": "Steel Grey", "size": "16x24", "totalCartons": 30, "totalPacks": 720, "ppc": 24, "cartonsIn": 28, "packsIn": 687, "scannedCartonsOut": 2, "scannedPacksOut": 6}, {"sku": "HB-C-TWL-400-SGY-61", "color": "Steel Grey", "size": "27x54", "totalCartons": 30, "totalPacks": 240, "ppc": 8, "cartonsIn": 26, "packsIn": 212, "scannedCartonsOut": 6, "scannedPacksOut": 4}, {"sku": "HB-C-TWL-400-SGY-8M", "color": "Steel Grey", "size": "8 pc set", "totalCartons": 10, "totalPacks": 120, "ppc": 12, "cartonsIn": 7, "packsIn": 92, "scannedCartonsOut": 4, "scannedPacksOut": 4}, {"sku": "HB-C-TWL-400-ST-33", "color": "Soft Teal", "size": "12x12", "totalCartons": 4, "totalPacks": 96, "ppc": 24, "cartonsIn": 1, "packsIn": 24, "scannedCartonsOut": 5, "scannedPacksOut": 1}, {"sku": "HB-C-TWL-400-ST-46", "color": "Soft Teal", "size": "16x24", "totalCartons": 8, "totalPacks": 192, "ppc": 24, "cartonsIn": 6, "packsIn": 166, "scannedCartonsOut": 2, "scannedPacksOut": 3}, {"sku": "HB-C-TWL-400-ST-61", "color": "Soft Teal", "size": "27x54", "totalCartons": 8, "totalPacks": 64, "ppc": 8, "cartonsIn": 5, "packsIn": 40, "scannedCartonsOut": 6, "scannedPacksOut": 0}, {"sku": "HB-C-TWL-400-ST-8M", "color": "Soft Teal", "size": "8 pc set", "totalCartons": 5, "totalPacks": 60, "ppc": 12, "cartonsIn": 4, "packsIn": 48, "scannedCartonsOut": 2, "scannedPacksOut": 0}, {"sku": "HB-C-TWL-400-W-33", "color": "White", "size": "12x12", "totalCartons": 4, "totalPacks": 96, "ppc": 24, "cartonsIn": 2, "packsIn": 63, "scannedCartonsOut": 10, "scannedPacksOut": 9}, {"sku": "HB-C-TWL-400-W-46", "color": "White", "size": "16x24", "totalCartons": 10, "totalPacks": 240, "ppc": 24, "cartonsIn": 8, "packsIn": 210, "scannedCartonsOut": 2, "scannedPacksOut": 4}, {"sku": "HB-C-TWL-400-W-61", "color": "White", "size": "27x54", "totalCartons": 10, "totalPacks": 80, "ppc": 8, "cartonsIn": 7, "packsIn": 63, "scannedCartonsOut": 4, "scannedPacksOut": 1}, {"sku": "HB-C-TWL-400-W-8M", "color": "White", "size": "8 pc set", "totalCartons": 10, "totalPacks": 120, "ppc": 12, "cartonsIn": 8, "packsIn": 107, "scannedCartonsOut": 2, "scannedPacksOut": 1}, {"sku": "HB-L-TWL-500-IB-33", "color": "Ice Blue", "size": "12x12", "totalCartons": 4, "totalPacks": 48, "ppc": 12, "cartonsIn": 0, "packsIn": 0, "scannedCartonsOut": 6, "scannedPacksOut": 1}, {"sku": "HB-L-TWL-500-IB-47", "color": "Ice Blue", "size": "16x28", "totalCartons": 3, "totalPacks": 48, "ppc": 16, "cartonsIn": 0, "packsIn": 0, "scannedCartonsOut": 4, "scannedPacksOut": 1}, {"sku": "HB-L-TWL-500-IB-61", "color": "Ice Blue", "size": "27x54", "totalCartons": 4, "totalPacks": 48, "ppc": 12, "cartonsIn": 0, "packsIn": 0, "scannedCartonsOut": 6, "scannedPacksOut": 3}, {"sku": "HB-L-TWL-500-IB-8M", "color": "Ice Blue", "size": "8 pc set", "totalCartons": 10, "totalPacks": 80, "ppc": 8, "cartonsIn": 4, "packsIn": 32, "scannedCartonsOut": 4, "scannedPacksOut": 0}, {"sku": "HB-L-TWL-500-S-33", "color": "Sand", "size": "12x12", "totalCartons": 4, "totalPacks": 48, "ppc": 12, "cartonsIn": 0, "packsIn": 0, "scannedCartonsOut": 6, "scannedPacksOut": 1}, {"sku": "HB-L-TWL-500-S-47", "color": "Sand", "size": "16x28", "totalCartons": 3, "totalPacks": 48, "ppc": 16, "cartonsIn": 0, "packsIn": 0, "scannedCartonsOut": 4, "scannedPacksOut": 0}, {"sku": "HB-L-TWL-500-S-61", "color": "Sand", "size": "27x54", "totalCartons": 4, "totalPacks": 48, "ppc": 12, "cartonsIn": 0, "packsIn": 0, "scannedCartonsOut": 8, "scannedPacksOut": 0}, {"sku": "HB-L-TWL-500-S-8M", "color": "Sand", "size": "8 pc set", "totalCartons": 10, "totalPacks": 80, "ppc": 8, "cartonsIn": 3, "packsIn": 24, "scannedCartonsOut": 6, "scannedPacksOut": 0}, {"sku": "HB-L-TWL-500-SG-33", "color": "Sage Green", "size": "12x12", "totalCartons": 4, "totalPacks": 48, "ppc": 12, "cartonsIn": 0, "packsIn": 0, "scannedCartonsOut": 6, "scannedPacksOut": 2}, {"sku": "HB-L-TWL-500-SG-47", "color": "Sage Green", "size": "16x28", "totalCartons": 5, "totalPacks": 80, "ppc": 16, "cartonsIn": 0, "packsIn": 0, "scannedCartonsOut": 6, "scannedPacksOut": 0}, {"sku": "HB-L-TWL-500-SG-61", "color": "Sage Green", "size": "27x54", "totalCartons": 6, "totalPacks": 72, "ppc": 12, "cartonsIn": 0, "packsIn": 0, "scannedCartonsOut": 10, "scannedPacksOut": 1}, {"sku": "HB-L-TWL-500-SG-8M", "color": "Sage Green", "size": "8 pc set", "totalCartons": 10, "totalPacks": 80, "ppc": 8, "cartonsIn": 1, "packsIn": 8, "scannedCartonsOut": 10, "scannedPacksOut": 2}, {"sku": "HB-L-TWL-500-STN-33", "color": "Stone Grey", "size": "12x12", "totalCartons": 7, "totalPacks": 84, "ppc": 12, "cartonsIn": 1, "packsIn": 17, "scannedCartonsOut": 6, "scannedPacksOut": 6}, {"sku": "HB-L-TWL-500-STN-47", "color": "Stone Grey", "size": "16x28", "totalCartons": 15, "totalPacks": 240, "ppc": 16, "cartonsIn": 10, "packsIn": 160, "scannedCartonsOut": 4, "scannedPacksOut": 0}, {"sku": "HB-L-TWL-500-STN-61", "color": "Stone Grey", "size": "27x54", "totalCartons": 16, "totalPacks": 192, "ppc": 12, "cartonsIn": 9, "packsIn": 117, "scannedCartonsOut": 6, "scannedPacksOut": 3}, {"sku": "HB-L-TWL-500-STN-8M", "color": "Stone Grey", "size": "8 pc set", "totalCartons": 30, "totalPacks": 240, "ppc": 8, "cartonsIn": 22, "packsIn": 176, "scannedCartonsOut": 5, "scannedPacksOut": 1}, {"sku": "HB-L-TWL-500-VW-33", "color": "Velvet Wine", "size": "12x12", "totalCartons": 4, "totalPacks": 48, "ppc": 12, "cartonsIn": 0, "packsIn": 7, "scannedCartonsOut": 4, "scannedPacksOut": 4}, {"sku": "HB-L-TWL-500-VW-47", "color": "Velvet Wine", "size": "16x28", "totalCartons": 5, "totalPacks": 80, "ppc": 16, "cartonsIn": 1, "packsIn": 16, "scannedCartonsOut": 4, "scannedPacksOut": 0}, {"sku": "HB-L-TWL-500-VW-61", "color": "Velvet Wine", "size": "27x54", "totalCartons": 6, "totalPacks": 72, "ppc": 12, "cartonsIn": 0, "packsIn": 0, "scannedCartonsOut": 10, "scannedPacksOut": 4}, {"sku": "HB-L-TWL-500-VW-8M", "color": "Velvet Wine", "size": "8 pc set", "totalCartons": 10, "totalPacks": 80, "ppc": 8, "cartonsIn": 1, "packsIn": 8, "scannedCartonsOut": 8, "scannedPacksOut": 0}, {"sku": "HB-L-TWL-500-W-33", "color": "White", "size": "12x12", "totalCartons": 4, "totalPacks": 48, "ppc": 12, "cartonsIn": 0, "packsIn": 0, "scannedCartonsOut": 8, "scannedPacksOut": 12}, {"sku": "HB-L-TWL-500-W-47", "color": "White", "size": "16x28", "totalCartons": 5, "totalPacks": 80, "ppc": 16, "cartonsIn": 1, "packsIn": 16, "scannedCartonsOut": 4, "scannedPacksOut": 0}, {"sku": "HB-L-TWL-500-W-61", "color": "White", "size": "27x54", "totalCartons": 6, "totalPacks": 72, "ppc": 12, "cartonsIn": 0, "packsIn": 11, "scannedCartonsOut": 6, "scannedPacksOut": 1}, {"sku": "HB-L-TWL-500-W-8M", "color": "White", "size": "8 pc set", "totalCartons": 10, "totalPacks": 80, "ppc": 8, "cartonsIn": 3, "packsIn": 24, "scannedCartonsOut": 4, "scannedPacksOut": 0}, {"sku": "NM-TWL-500-A-33", "color": "Anthrazit", "size": "12x12", "totalCartons": 21, "totalPacks": 630, "ppc": 30, "cartonsIn": 19, "packsIn": 592, "scannedCartonsOut": 2, "scannedPacksOut": 6}, {"sku": "NM-TWL-500-A-51", "color": "Anthrazit", "size": "20x40", "totalCartons": 20, "totalPacks": 160, "ppc": 8, "cartonsIn": 17, "packsIn": 143, "scannedCartonsOut": 4, "scannedPacksOut": 1}, {"sku": "NM-TWL-500-A-71", "color": "Anthrazit", "size": "27x54", "totalCartons": 42, "totalPacks": 504, "ppc": 12, "cartonsIn": 37, "packsIn": 444, "scannedCartonsOut": 4, "scannedPacksOut": 11}, {"sku": "NM-TWL-500-BK-33", "color": "Black", "size": "12x12", "totalCartons": 9, "totalPacks": 270, "ppc": 30, "cartonsIn": 7, "packsIn": 232, "scannedCartonsOut": 2, "scannedPacksOut": 6}, {"sku": "NM-TWL-500-BK-51", "color": "Black", "size": "20x40", "totalCartons": 10, "totalPacks": 80, "ppc": 8, "cartonsIn": 10, "packsIn": 80, "scannedCartonsOut": 0, "scannedPacksOut": 0}, {"sku": "NM-TWL-500-BK-71", "color": "Black", "size": "27x54", "totalCartons": 21, "totalPacks": 252, "ppc": 12, "cartonsIn": 17, "packsIn": 209, "scannedCartonsOut": 4, "scannedPacksOut": 4}, {"sku": "NM-TWL-500-NB-33", "color": "Navy Blue", "size": "12x12", "totalCartons": 10, "totalPacks": 300, "ppc": 30, "cartonsIn": 8, "packsIn": 267, "scannedCartonsOut": 2, "scannedPacksOut": 2}, {"sku": "NM-TWL-500-NB-51", "color": "Navy Blue", "size": "20x40", "totalCartons": 10, "totalPacks": 80, "ppc": 8, "cartonsIn": 8, "packsIn": 64, "scannedCartonsOut": 4, "scannedPacksOut": 0}, {"sku": "NM-TWL-500-NB-71", "color": "Navy Blue", "size": "27x54", "totalCartons": 21, "totalPacks": 252, "ppc": 12, "cartonsIn": 18, "packsIn": 220, "scannedCartonsOut": 2, "scannedPacksOut": 5}, {"sku": "NM-TWL-500-S-33", "color": "Sand", "size": "12x12", "totalCartons": 10, "totalPacks": 300, "ppc": 30, "cartonsIn": 8, "packsIn": 266, "scannedCartonsOut": 2, "scannedPacksOut": 4}, {"sku": "NM-TWL-500-S-51", "color": "Sand", "size": "20x40", "totalCartons": 10, "totalPacks": 80, "ppc": 8, "cartonsIn": 7, "packsIn": 56, "scannedCartonsOut": 6, "scannedPacksOut": 0}, {"sku": "NM-TWL-500-S-71", "color": "Sand", "size": "27x54", "totalCartons": 17, "totalPacks": 204, "ppc": 12, "cartonsIn": 13, "packsIn": 166, "scannedCartonsOut": 4, "scannedPacksOut": 3}, {"sku": "NM-TWL-500-W-33", "color": "White", "size": "12x12", "totalCartons": 10, "totalPacks": 300, "ppc": 30, "cartonsIn": 8, "packsIn": 267, "scannedCartonsOut": 2, "scannedPacksOut": 3}, {"sku": "NM-TWL-500-W-51", "color": "White", "size": "20x40", "totalCartons": 10, "totalPacks": 80, "ppc": 8, "cartonsIn": 10, "packsIn": 80, "scannedCartonsOut": 0, "scannedPacksOut": 0}, {"sku": "NM-TWL-500-W-71", "color": "White", "size": "27x54", "totalCartons": 19, "totalPacks": 228, "ppc": 12, "cartonsIn": 17, "packsIn": 204, "scannedCartonsOut": 5, "scannedPacksOut": 0}];
+const BMAP = {"4251590118743": {"sku": "GM-TWL-400-A-51", "pallet": 36}, "4251590118750": {"sku": "GM-TWL-400-A-71", "pallet": 31}, "4251590119160": {"sku": "GM-TWL-400-S-51", "pallet": 36}, "4251590119177": {"sku": "GM-TWL-400-S-71", "pallet": 34}, "4251590119344": {"sku": "GM-TWL-400-W-51", "pallet": 36}, "4251590119351": {"sku": "GM-TWL-400-W-71", "pallet": 35}, "15061099980248": {"sku": "HB-C-TWL-400-DR-33", "pallet": 2}, "15061099980255": {"sku": "HB-C-TWL-400-DR-46", "pallet": 26}, "15061099980262": {"sku": "HB-C-TWL-400-DR-61", "pallet": 45}, "15061099980279": {"sku": "HB-C-TWL-400-DR-8M", "pallet": 42}, "15061099980286": {"sku": "HB-C-TWL-400-MG-33", "pallet": 2}, "15061099980293": {"sku": "HB-C-TWL-400-MG-46", "pallet": 26}, "15061099980309": {"sku": "HB-C-TWL-400-MG-61", "pallet": 43}, "15061099980316": {"sku": "HB-C-TWL-400-MG-8M", "pallet": 44}, "15061099980323": {"sku": "HB-C-TWL-400-SGY-33", "pallet": 2}, "15061099980330": {"sku": "HB-C-TWL-400-SGY-46", "pallet": 26}, "15061099980347": {"sku": "HB-C-TWL-400-SGY-61", "pallet": 40}, "15061099980354": {"sku": "HB-C-TWL-400-SGY-8M", "pallet": 42}, "15061099980361": {"sku": "HB-C-TWL-400-ST-33", "pallet": 2}, "15061099980378": {"sku": "HB-C-TWL-400-ST-46", "pallet": 26}, "15061099980385": {"sku": "HB-C-TWL-400-ST-61", "pallet": 40}, "15061099980392": {"sku": "HB-C-TWL-400-ST-8M", "pallet": 45}, "15061099980408": {"sku": "HB-C-TWL-400-W-33", "pallet": 2}, "15061099980415": {"sku": "HB-C-TWL-400-W-46", "pallet": 26}, "15061099980422": {"sku": "HB-C-TWL-400-W-61", "pallet": 42}, "15061099980439": {"sku": "HB-C-TWL-400-W-8M", "pallet": 44}, "15061099980040": {"sku": "HB-L-TWL-500-IB-33", "pallet": 1}, "15061099980057": {"sku": "HB-L-TWL-500-IB-47", "pallet": 23}, "15061099980064": {"sku": "HB-L-TWL-500-IB-61", "pallet": 49}, "15061099980071": {"sku": "HB-L-TWL-500-IB-8M", "pallet": 46}, "15061099980125": {"sku": "HB-L-TWL-500-S-33", "pallet": 1}, "15061099980132": {"sku": "HB-L-TWL-500-S-47", "pallet": 23}, "15061099980149": {"sku": "HB-L-TWL-500-S-61", "pallet": 50}, "15061099980156": {"sku": "HB-L-TWL-500-S-8M", "pallet": 48}, "15061099980101": {"sku": "HB-L-TWL-500-SG-33", "pallet": 1}, "15061099980088": {"sku": "HB-L-TWL-500-SG-47", "pallet": 27}, "15061099980095": {"sku": "HB-L-TWL-500-SG-61", "pallet": 50}, "15061099980118": {"sku": "HB-L-TWL-500-SG-8M", "pallet": 48}, "15061099980446": {"sku": "HB-L-TWL-500-STN-33", "pallet": 1}, "15061099980453": {"sku": "HB-L-TWL-500-STN-47", "pallet": 27}, "15061099980460": {"sku": "HB-L-TWL-500-STN-61", "pallet": 50}, "15061099980477": {"sku": "HB-L-TWL-500-STN-8M", "pallet": 49}, "15061099980163": {"sku": "HB-L-TWL-500-VW-33", "pallet": 1}, "15061099980170": {"sku": "HB-L-TWL-500-VW-47", "pallet": 27}, "15061099980187": {"sku": "HB-L-TWL-500-VW-61", "pallet": 50}, "15061099980194": {"sku": "HB-L-TWL-500-VW-8M", "pallet": 48}, "15061099980200": {"sku": "HB-L-TWL-500-W-33", "pallet": 1}, "15061099980217": {"sku": "HB-L-TWL-500-W-47", "pallet": 27}, "15061099980224": {"sku": "HB-L-TWL-500-W-61", "pallet": 50}, "15061099980231": {"sku": "HB-L-TWL-500-W-8M", "pallet": 48}, "4251590116947": {"sku": "NM-TWL-500-A-33", "pallet": 7}, "4251590116961": {"sku": "NM-TWL-500-A-51", "pallet": 25}, "4251590116978": {"sku": "NM-TWL-500-A-71", "pallet": 17}, "4251590118293": {"sku": "NM-TWL-500-BK-33", "pallet": 8}, "4251590118316": {"sku": "NM-TWL-500-BK-51", "pallet": 25}, "4251590118323": {"sku": "NM-TWL-500-BK-71", "pallet": 15}, "4251590117661": {"sku": "NM-TWL-500-NB-33", "pallet": 8}, "4251590117685": {"sku": "NM-TWL-500-NB-51", "pallet": 20}, "4251590117692": {"sku": "NM-TWL-500-NB-71", "pallet": 17}, "4251590118118": {"sku": "NM-TWL-500-S-33", "pallet": 8}, "4251590118132": {"sku": "NM-TWL-500-S-51", "pallet": 19}, "4251590118149": {"sku": "NM-TWL-500-S-71", "pallet": 17}, "4251590118651": {"sku": "NM-TWL-500-W-33", "pallet": 8}, "4251590118675": {"sku": "NM-TWL-500-W-51", "pallet": 25}, "4251590118682": {"sku": "NM-TWL-500-W-71", "pallet": 16}};
+const PALLET_DATA = {"1": {"NM-TWL-500-NB-33": {"fullCartons": 8, "openPacks": 27, "ppc": 30, "color": "Navy Blue", "size": "12x12"}}, "2": {"NM-TWL-500-S-33": {"fullCartons": 8, "openPacks": 26, "ppc": 30, "color": "Sand", "size": "12x12"}}, "3": {"NM-TWL-500-NB-71": {"fullCartons": 17, "openPacks": 4, "ppc": 12, "color": "Navy Blue", "size": "27x54"}}, "4": {"NM-TWL-500-S-71": {"fullCartons": 13, "openPacks": 10, "ppc": 12, "color": "Sand", "size": "27x54"}, "NM-TWL-500-NB-71": {"fullCartons": 1, "openPacks": 0, "ppc": 12, "color": "Navy Blue", "size": "27x54"}, "NM-TWL-500-A-71": {"fullCartons": 1, "openPacks": 0, "ppc": 12, "color": "Anthrazit", "size": "27x54"}, "NM-TWL-500-W-71": {"fullCartons": 1, "openPacks": 0, "ppc": 12, "color": "White", "size": "27x54"}}, "5": {"NM-TWL-500-NB-51": {"fullCartons": 8, "openPacks": 0, "ppc": 8, "color": "Navy Blue", "size": "20x40"}}, "6": {"NM-TWL-500-S-51": {"fullCartons": 7, "openPacks": 0, "ppc": 8, "color": "Sand", "size": "20x40"}}, "7": {"NM-TWL-500-A-33": {"fullCartons": 14, "openPacks": 0, "ppc": 30, "color": "Anthrazit", "size": "12x12"}}, "8": {"NM-TWL-500-A-33": {"fullCartons": 5, "openPacks": 22, "ppc": 30, "color": "Anthrazit", "size": "12x12"}}, "9": {"NM-TWL-500-A-71": {"fullCartons": 18, "openPacks": 0, "ppc": 12, "color": "Anthrazit", "size": "27x54"}}, "10": {"NM-TWL-500-A-71": {"fullCartons": 18, "openPacks": 0, "ppc": 12, "color": "Anthrazit", "size": "27x54"}}, "11": {"NM-TWL-500-A-51": {"fullCartons": 12, "openPacks": 0, "ppc": 8, "color": "Anthrazit", "size": "20x40"}}, "12": {"NM-TWL-500-A-51": {"fullCartons": 5, "openPacks": 7, "ppc": 8, "color": "Anthrazit", "size": "20x40"}}, "13": {"NM-TWL-500-W-33": {"fullCartons": 8, "openPacks": 27, "ppc": 30, "color": "White", "size": "12x12"}}, "14": {"NM-TWL-500-BK-33": {"fullCartons": 7, "openPacks": 22, "ppc": 30, "color": "Black", "size": "12x12"}}, "15": {"NM-TWL-500-W-71": {"fullCartons": 16, "openPacks": 0, "ppc": 12, "color": "White", "size": "27x54"}}, "16": {"NM-TWL-500-BK-71": {"fullCartons": 17, "openPacks": 5, "ppc": 12, "color": "Black", "size": "27x54"}}, "17": {"NM-TWL-500-W-51": {"fullCartons": 10, "openPacks": 0, "ppc": 8, "color": "White", "size": "20x40"}}, "18": {"NM-TWL-500-BK-51": {"fullCartons": 10, "openPacks": 0, "ppc": 8, "color": "Black", "size": "20x40"}}, "19": {"HB-C-TWL-400-DR-61": {"fullCartons": 4, "openPacks": 7, "ppc": 8, "color": "Dune Red", "size": "27x54"}, "HB-C-TWL-400-MG-61": {"fullCartons": 3, "openPacks": 0, "ppc": 8, "color": "Moss Green", "size": "27x54"}, "HB-C-TWL-400-SGY-61": {"fullCartons": 11, "openPacks": 4, "ppc": 8, "color": "Steel Grey", "size": "27x54"}, "HB-C-TWL-400-W-61": {"fullCartons": 2, "openPacks": 7, "ppc": 8, "color": "White", "size": "27x54"}, "HB-C-TWL-400-ST-61": {"fullCartons": 3, "openPacks": 0, "ppc": 8, "color": "Soft Teal", "size": "27x54"}}, "20": {"HB-C-TWL-400-W-61": {"fullCartons": 5, "openPacks": 0, "ppc": 8, "color": "White", "size": "27x54"}, "HB-C-TWL-400-MG-61": {"fullCartons": 4, "openPacks": 0, "ppc": 8, "color": "Moss Green", "size": "27x54"}, "HB-C-TWL-400-SGY-61": {"fullCartons": 15, "openPacks": 0, "ppc": 8, "color": "Steel Grey", "size": "27x54"}, "HB-C-TWL-400-ST-61": {"fullCartons": 2, "openPacks": 0, "ppc": 8, "color": "Soft Teal", "size": "27x54"}}, "21": {"HB-C-TWL-400-SGY-46": {"fullCartons": 15, "openPacks": 0, "ppc": 24, "color": "Steel Grey", "size": "16x24"}, "HB-C-TWL-400-MG-46": {"fullCartons": 1, "openPacks": 0, "ppc": 24, "color": "Moss Green", "size": "16x24"}, "HB-C-TWL-400-ST-46": {"fullCartons": 3, "openPacks": 0, "ppc": 24, "color": "Soft Teal", "size": "16x24"}, "HB-C-TWL-400-W-46": {"fullCartons": 1, "openPacks": 0, "ppc": 24, "color": "White", "size": "16x24"}}, "22": {"HB-C-TWL-400-DR-46": {"fullCartons": 3, "openPacks": 20, "ppc": 24, "color": "Dune Red", "size": "16x24"}, "HB-C-TWL-400-ST-46": {"fullCartons": 1, "openPacks": 22, "ppc": 24, "color": "Soft Teal", "size": "16x24"}, "HB-C-TWL-400-W-46": {"fullCartons": 3, "openPacks": 18, "ppc": 24, "color": "White", "size": "16x24"}, "HB-C-TWL-400-SGY-46": {"fullCartons": 5, "openPacks": 15, "ppc": 24, "color": "Steel Grey", "size": "16x24"}, "HB-C-TWL-400-MG-46": {"fullCartons": 3, "openPacks": 18, "ppc": 24, "color": "Moss Green", "size": "16x24"}}, "23": {"HB-C-TWL-400-MG-8M": {"fullCartons": 5, "openPacks": 9, "ppc": 12, "color": "Moss Green", "size": "8 pc set"}, "HB-C-TWL-400-W-8M": {"fullCartons": 6, "openPacks": 11, "ppc": 12, "color": "White", "size": "8 pc set"}, "HB-C-TWL-400-SGY-8M": {"fullCartons": 1, "openPacks": 8, "ppc": 12, "color": "Steel Grey", "size": "8 pc set"}, "HB-C-TWL-400-DR-8M": {"fullCartons": 0, "openPacks": 10, "ppc": 12, "color": "Dune Red", "size": "8 pc set"}}, "24": {"HB-C-TWL-400-DR-8M": {"fullCartons": 3, "openPacks": 0, "ppc": 12, "color": "Dune Red", "size": "8 pc set"}, "HB-C-TWL-400-W-8M": {"fullCartons": 2, "openPacks": 0, "ppc": 12, "color": "White", "size": "8 pc set"}, "HB-C-TWL-400-SGY-8M": {"fullCartons": 6, "openPacks": 0, "ppc": 12, "color": "Steel Grey", "size": "8 pc set"}, "HB-C-TWL-400-MG-8M": {"fullCartons": 3, "openPacks": 0, "ppc": 12, "color": "Moss Green", "size": "8 pc set"}, "HB-C-TWL-400-ST-8M": {"fullCartons": 3, "openPacks": 0, "ppc": 12, "color": "Soft Teal", "size": "8 pc set"}}, "25": {"GM-TWL-400-W-71": {"fullCartons": 27, "openPacks": 0, "ppc": 8, "color": "White", "size": "27x54"}}, "26": {"GM-TWL-400-S-71": {"fullCartons": 18, "openPacks": 7, "ppc": 8, "color": "Sand", "size": "27x54"}}, "27": {"GM-TWL-400-A-71": {"fullCartons": 26, "openPacks": 0, "ppc": 8, "color": "Anthrazit", "size": "27x54"}}, "28": {"GM-TWL-400-W-51": {"fullCartons": 16, "openPacks": 0, "ppc": 8, "color": "White", "size": "20x40"}}, "29": {"GM-TWL-400-S-51": {"fullCartons": 8, "openPacks": 0, "ppc": 8, "color": "Sand", "size": "20x40"}, "GM-TWL-400-W-51": {"fullCartons": 1, "openPacks": 7, "ppc": 8, "color": "White", "size": "20x40"}, "GM-TWL-400-A-51": {"fullCartons": 1, "openPacks": 7, "ppc": 8, "color": "Anthrazit", "size": "20x40"}}, "30": {"GM-TWL-400-A-51": {"fullCartons": 16, "openPacks": 0, "ppc": 8, "color": "Anthrazit", "size": "20x40"}}, "33": {"HB-L-TWL-500-S-8M": {"fullCartons": 3, "openPacks": 0, "ppc": 8, "color": "Sand", "size": "8 pc set"}, "HB-L-TWL-500-STN-8M": {"fullCartons": 10, "openPacks": 0, "ppc": 8, "color": "Stone Grey", "size": "8 pc set"}, "HB-C-TWL-400-ST-8M": {"fullCartons": 1, "openPacks": 0, "ppc": 12, "color": "Soft Teal", "size": "8 pc set"}, "HB-C-TWL-400-DR-61": {"fullCartons": 1, "openPacks": 0, "ppc": 8, "color": "Dune Red", "size": "27x54"}, "HB-L-TWL-500-VW-8M": {"fullCartons": 1, "openPacks": 0, "ppc": 8, "color": "Velvet Wine", "size": "8 pc set"}, "HB-L-TWL-500-W-8M": {"fullCartons": 1, "openPacks": 0, "ppc": 8, "color": "White", "size": "8 pc set"}, "HB-L-TWL-500-SG-8M": {"fullCartons": 1, "openPacks": 0, "ppc": 8, "color": "Sage Green", "size": "8 pc set"}}, "34": {"HB-L-TWL-500-IB-8M": {"fullCartons": 4, "openPacks": 0, "ppc": 8, "color": "Ice Blue", "size": "8 pc set"}, "HB-L-TWL-500-STN-8M": {"fullCartons": 12, "openPacks": 0, "ppc": 8, "color": "Stone Grey", "size": "8 pc set"}, "HB-L-TWL-500-W-8M": {"fullCartons": 2, "openPacks": 0, "ppc": 8, "color": "White", "size": "8 pc set"}}, "35": {"HB-L-TWL-500-STN-47": {"fullCartons": 10, "openPacks": 0, "ppc": 16, "color": "Stone Grey", "size": "16x28"}, "HB-L-TWL-500-W-47": {"fullCartons": 1, "openPacks": 0, "ppc": 16, "color": "White", "size": "16x28"}, "HB-L-TWL-500-VW-47": {"fullCartons": 1, "openPacks": 0, "ppc": 16, "color": "Velvet Wine", "size": "16x28"}, "HB-L-TWL-500-STN-33": {"fullCartons": 1, "openPacks": 5, "ppc": 12, "color": "Stone Grey", "size": "12x12"}, "HB-L-TWL-500-VW-33": {"fullCartons": 0, "openPacks": 7, "ppc": 12, "color": "Velvet Wine", "size": "12x12"}}, "36": {"HB-L-TWL-500-STN-61": {"fullCartons": 9, "openPacks": 9, "ppc": 12, "color": "Stone Grey", "size": "27x54"}, "HB-L-TWL-500-W-61": {"fullCartons": 0, "openPacks": 11, "ppc": 12, "color": "White", "size": "27x54"}}, "51": {"HB-C-TWL-400-SGY-33": {"fullCartons": 8, "openPacks": 0, "ppc": 24, "color": "Steel Grey", "size": "12x12"}, "HB-C-TWL-400-DR-33": {"fullCartons": 3, "openPacks": 0, "ppc": 24, "color": "Dune Red", "size": "12x12"}, "HB-C-TWL-400-W-33": {"fullCartons": 2, "openPacks": 15, "ppc": 24, "color": "White", "size": "12x12"}, "HB-C-TWL-400-ST-33": {"fullCartons": 1, "openPacks": 0, "ppc": 24, "color": "Soft Teal", "size": "12x12"}, "HB-C-TWL-400-MG-33": {"fullCartons": 2, "openPacks": 23, "ppc": 24, "color": "Moss Green", "size": "12x12"}}, "52": {"HB-C-TWL-400-DR-46": {"fullCartons": 4, "openPacks": 0, "ppc": 24, "color": "Dune Red", "size": "16x24"}, "HB-C-TWL-400-SGY-46": {"fullCartons": 8, "openPacks": 0, "ppc": 24, "color": "Steel Grey", "size": "16x24"}, "HB-C-TWL-400-MG-46": {"fullCartons": 3, "openPacks": 0, "ppc": 24, "color": "Moss Green", "size": "16x24"}, "HB-C-TWL-400-W-46": {"fullCartons": 4, "openPacks": 0, "ppc": 24, "color": "White", "size": "16x24"}, "HB-C-TWL-400-ST-46": {"fullCartons": 2, "openPacks": 0, "ppc": 24, "color": "Soft Teal", "size": "16x24"}}};
+const SUPABASE_URL = 'https://qcnjfqgdlptsnuqskxfi.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_MdB6LfcgaSDdIraZL6QNdg_h60y5cp6';
+const AMZ_CLIENT_ID     = 'amzn1.application-oa2-client.f993cb6da4c344e2b4f92b3c77e00a7b';
+const AMZ_CLIENT_SECRET = 'amzn1.oa2-cs.v1.d3039aa3b8703179ea818a8b50b8134ca1b9e64b2085904596fa909';
+const AMZ_REFRESH_TOKEN = 'Atzr|IwEBIHRuH8Ezawvbngcv1KVRplHL_3VQ-7hyDkDyYdLxsvlsbQLn2BmOnSrSYQ8d-Qq1uOhm6Rdnaop2X3HgiQvV-DgeCicGybKAqNUlaLRMlF73aF2r9GLI9pCiVRM2frNKztr1U25FVxQpCjneb5zmriCehD6CQQkrM4y1EaqOTFaK36fWgaUH7isVpmufDsythFnEaWqvCRXv9jDukfBPxjHLOKSpP-SmfapudxrwHceg8tycy416UuYpTMyphPX9MD2c5nqtC8Xna6onxBmB4XDX21iHDEQcop03YlMWYVYAKsbmbOWk2K9ZuD4HlO6YMKAB2pfq_37M5XsyivDTtd_s';
+const AMZ_MARKETPLACE_ID = 'ATVPDKIKX0DER';
+
+// ── STATE ─────────────────────────────────────────────────────
+let inventory   = [];
+let transactions = [];
+let invFilter   = 'all';
+let invSort     = {key:'sku', dir:1};
+let logFilter   = 'all';
+let abUnit      = 'packs';
+let scanSku     = null;
+let pickQueue   = [];
+let pickPlan    = [];
+let zxingReader = null;
+let scanActive  = false;
+let amzToken    = null;
+let amzExpiry   = 0;
+
+// ── INIT ──────────────────────────────────────────────────────
+function init() {
+  buildInventory();
+  populateDataLists();
+  populatePalletSelect();
+  renderAll();
+  // Nav
+  document.querySelectorAll('.nav-item[data-page]').forEach(btn =>
+    btn.addEventListener('click', () => switchPage(btn.dataset.page)));
+  // Search
+  document.getElementById('inv-search').addEventListener('input', renderInventory);
+  document.getElementById('pallet-search').addEventListener('input', renderPallets);
+  // Supabase
+  setTimeout(loadSupabase, 100);
+}
+
+function buildInventory() {
+  inventory = BASE_INV.map(s => ({...s, packs: s.packsIn, cartons: s.cartonsIn}));
+  const netP = {}, netC = {};
+  transactions.forEach(t => {
+    if (!netP[t.sku]) { netP[t.sku]=0; netC[t.sku]=0; }
+    const sign = t.type === 'deduct' ? -1 : 1;
+    if (t.unit === 'packs')   netP[t.sku] += sign * (t.qty||0);
+    if (t.unit === 'cartons') netC[t.sku] += sign * (t.qty||0);
+  });
+  inventory.forEach(s => {
+    if (netP[s.sku]) s.packs   = Math.max(0, s.packs   + netP[s.sku]);
+    if (netC[s.sku]) s.cartons = Math.max(0, s.cartons + netC[s.sku]);
+  });
+}
+
+function populateDataLists() {
+  const skus = BASE_INV.map(s => s.sku);
+  ['sku-dl','sku-dl2'].forEach(id => {
+    const dl = document.getElementById(id);
+    if (!dl) return;
+    skus.forEach(s => { const o = document.createElement('option'); o.value = s; dl.appendChild(o); });
+  });
+}
+
+function populatePalletSelect() {
+  const sel = document.getElementById('ab-pallet');
+  sel.innerHTML = '<option value="">— Unknown</option>';
+  Object.keys(PALLET_DATA).map(Number).sort((a,b)=>a-b).forEach(p => {
+    const o = document.createElement('option');
+    o.value = p; o.textContent = 'Pallet ' + p;
+    sel.appendChild(o);
+  });
+}
+
+async function loadSupabase() {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/transactions?order=created_at.desc&limit=500`, {
+      headers: {'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`}
+    });
+    if (!res.ok) throw new Error();
+    transactions = await res.json();
+    buildInventory();
+    renderAll();
+    document.getElementById('sync-dot').className   = 'sync-dot ok';
+    document.getElementById('sync-label').textContent = 'Live';
+  } catch(e) {
+    document.getElementById('sync-dot').className   = 'sync-dot err';
+    document.getElementById('sync-label').textContent = 'Offline';
+  }
+}
+
+async function saveTransaction(tx) {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/transactions`, {
+      method: 'POST',
+      headers: {'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation'},
+      body: JSON.stringify(tx)
+    });
+    const saved = await res.json();
+    transactions.unshift(saved[0]);
+  } catch(e) {
+    transactions.unshift({...tx, id: Date.now(), created_at: new Date().toISOString()});
+  }
+  buildInventory();
+  renderAll();
+}
+
+// ── RENDER ALL ────────────────────────────────────────────────
+function renderAll() {
+  renderStats();
+  renderInventory();
+  renderPallets();
+  renderAlerts();
+  renderLog();
+}
+
+// ── STATUS ────────────────────────────────────────────────────
+function getStatus(s) {
+  if (s.packs === 0 && s.cartons === 0) return 'out';
+  if (s.packs <= 5  || s.cartons <= 2)  return 'critical';
+  if (s.packs <= 20 || s.cartons <= 5)  return 'low';
+  return 'ok';
+}
+
+// ── STATS ─────────────────────────────────────────────────────
+function renderStats() {
+  const totalPacks   = inventory.reduce((a,s) => a+s.packs, 0);
+  const totalCartons = inventory.reduce((a,s) => a+s.cartons, 0);
+  const critical     = inventory.filter(s => getStatus(s)==='critical').length;
+  const todayOut     = transactions.filter(t => {
+    if (t.type !== 'deduct') return false;
+    const d = new Date(t.created_at); const n = new Date();
+    return d.toDateString() === n.toDateString();
+  }).reduce((a,t) => a + (t.qty||0), 0);
+
+  document.getElementById('stats-row').innerHTML = `
+    <div class="stat-box"><div class="val">${inventory.length}</div><div class="lbl">SKUs</div></div>
+    <div class="stat-box green"><div class="val">${totalPacks.toLocaleString()}</div><div class="lbl">Packs</div></div>
+    <div class="stat-box blue"><div class="val">${totalCartons}</div><div class="lbl">Cartons</div></div>
+    <div class="stat-box red"><div class="val">${critical}</div><div class="lbl">Critical</div></div>
+    <div class="stat-box orange"><div class="val">${todayOut}</div><div class="lbl">Today Out</div></div>`;
+}
+
+// ── INVENTORY TABLE ───────────────────────────────────────────
+function setInvFilter(el, f) {
+  document.querySelectorAll('.filter-btn[data-f]').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  invFilter = f;
+  renderInventory();
+}
+
+function sortInv(key) {
+  invSort.dir = invSort.key === key ? -invSort.dir : 1;
+  invSort.key = key;
+  renderInventory();
+}
+
+function renderInventory() {
+  const q = document.getElementById('inv-search').value.toLowerCase();
+  let list = inventory.filter(s => {
+    if (q && !s.sku.toLowerCase().includes(q) && !s.color.toLowerCase().includes(q) && !s.size.toLowerCase().includes(q)) return false;
+    const st = getStatus(s);
+    if (invFilter === 'critical') return st === 'critical';
+    if (invFilter === 'low')      return st === 'low';
+    if (invFilter === 'out')      return st === 'out';
+    if (invFilter === 'ok')       return st === 'ok';
+    return true;
+  });
+
+  // Sort
+  list.sort((a,b) => {
+    let av = a[invSort.key] ?? a.packs, bv = b[invSort.key] ?? b.packs;
+    if (invSort.key === 'packs')   { av = a.packs;   bv = b.packs; }
+    if (invSort.key === 'cartons') { av = a.cartons; bv = b.cartons; }
+    if (invSort.key === 'status')  { av = getStatus(a); bv = getStatus(b); }
+    return typeof av === 'string' ? av.localeCompare(bv)*invSort.dir : (av-bv)*invSort.dir;
+  });
+
+  const statusLabel = {ok:'OK',low:'Low',critical:'Critical',out:'Out'};
+  const statusClass = {ok:'status-ok',low:'status-low',critical:'status-critical',out:'status-out'};
+  const barClass    = {ok:'',low:'low',critical:'critical',out:'critical'};
+
+  document.getElementById('inv-tbody').innerHTML = list.map(s => {
+    const st  = getStatus(s);
+    const pct = Math.min(100, Math.round((s.packs / (s.totalPacks||1)) * 100));
+    // Find open packs for this sku across pallets
+    let openPacks = 0, fullPacks = 0;
+    Object.values(PALLET_DATA).forEach(skus => {
+      if (skus[s.sku]) {
+        fullPacks += skus[s.sku].fullCartons * (skus[s.sku].ppc || s.ppc);
+        openPacks += skus[s.sku].openPacks || 0;
+      }
+    });
+    const packSub = openPacks > 0 ? `${s.cartons} full + ${openPacks} loose` : `${s.cartons} carton${s.cartons!==1?'s':''}`;
+
+    return `<tr>
+      <td class="sku-cell">${s.sku}</td>
+      <td>${s.color}</td>
+      <td>${s.size}</td>
+      <td>
+        <div class="pack-main">${s.packs}</div>
+        <div class="pack-sub">${packSub}</div>
+        <div class="pack-bar"><div class="pack-bar-fill ${barClass[st]}" style="width:${pct}%"></div></div>
+      </td>
+      <td style="font-weight:600">${s.cartons}</td>
+      <td style="color:var(--muted)">${s.ppc}</td>
+      <td><span class="status-badge ${statusClass[st]}">${statusLabel[st]}</span></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted)">No results</td></tr>';
+}
+
+// ── ADD STOCK BACK ────────────────────────────────────────────
+function setAbUnit(u) {
+  abUnit = u;
+  document.getElementById('ab-unit-packs').classList.toggle('active', u==='packs');
+  document.getElementById('ab-unit-cartons').classList.toggle('active', u==='cartons');
+}
+
+async function addStockBack() {
+  const sku = document.getElementById('ab-sku').value.trim();
+  const qty = parseInt(document.getElementById('ab-qty').value);
+  const pallet = document.getElementById('ab-pallet').value;
+  const reason = document.getElementById('ab-reason').value;
+  const note   = document.getElementById('ab-note').value.trim();
+  if (!sku || !qty || qty < 1) { toast('Enter SKU and quantity', 'err'); return; }
+  if (!inventory.find(s => s.sku === sku)) { toast('SKU not found', 'err'); return; }
+  await saveTransaction({sku, unit: abUnit, qty, type:'addback', channel:'Manual', pallet:pallet||null, note: note||reason, source:'manual', created_at: new Date().toISOString()});
+  document.getElementById('ab-sku').value = '';
+  document.getElementById('ab-qty').value = '1';
+  document.getElementById('ab-note').value = '';
+  toast(`✅ Added ${qty} ${abUnit} of ${sku}`);
+}
+
+// ── PALLETS ───────────────────────────────────────────────────
+function renderPallets() {
+  const q = (document.getElementById('pallet-search')?.value||'').toLowerCase();
+  const nums = Object.keys(PALLET_DATA).map(Number).sort((a,b)=>a-b);
+  const filtered = nums.filter(p => {
+    if (!q) return true;
+    if (String(p).includes(q)) return true;
+    return Object.keys(PALLET_DATA[String(p)]).some(s =>
+      s.toLowerCase().includes(q) ||
+      (PALLET_DATA[String(p)][s].color||'').toLowerCase().includes(q));
+  });
+
+  document.getElementById('pallet-grid').innerHTML = filtered.map(p => {
+    const skus = PALLET_DATA[String(p)];
+    const active = Object.entries(skus).filter(([,v]) => v.fullCartons>0||v.openPacks>0);
+    if (!active.length) return '';
+    const totalC = active.reduce((a,[,v])=>a+v.fullCartons,0);
+    const totalP = active.reduce((a,[,v])=>a+(v.fullCartons*(v.ppc||0))+v.openPacks,0);
+    const openP  = active.reduce((a,[,v])=>a+v.openPacks,0);
+
+    const rows = active.map(([s,v]) => {
+      const ppc = v.ppc || (inventory.find(i=>i.sku===s)||{}).ppc || 0;
+      return `<div class="pallet-sku-row">
+        <div class="sku-info">
+          <div class="sku-name">${s}</div>
+          <div class="sku-meta">${v.color||''} · ${v.size||''}</div>
+        </div>
+        <div class="sku-qty">
+          ${v.fullCartons>0 ? `<div class="cartons">${v.fullCartons} carton${v.fullCartons!==1?'s':''} <span style="font-size:11px;color:#94a3b8;font-weight:400">(${v.fullCartons*ppc} packs)</span></div>` : ''}
+          ${v.openPacks>0 ? `<div class="open">1 open carton — ${v.openPacks} packs inside</div>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+
+    return `<div class="pallet-card">
+      <div class="pallet-card-header">
+        <div class="pnum">🏭 Pallet ${p}</div>
+        <div class="pstats">
+          <div><span class="pc">${totalC}</span> cartons</div>
+          ${openP>0 ? `<div style="color:#f59e0b">${openP} packs in open cartons</div>` : ''}
+        </div>
+      </div>
+      ${rows}
+    </div>`;
+  }).filter(Boolean).join('') || '<div style="color:var(--muted);padding:24px">No pallets found</div>';
+}
+
+// ── ALERTS ────────────────────────────────────────────────────
+function renderAlerts() {
+  const out      = inventory.filter(s=>getStatus(s)==='out');
+  const critical = inventory.filter(s=>getStatus(s)==='critical');
+  const low      = inventory.filter(s=>getStatus(s)==='low');
+
+  const makeRows = (items, cls) => items.map(s=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 14px;border-bottom:1px solid var(--border)">
+      <div><div style="font-size:13px;font-weight:600">${s.sku}</div><div style="font-size:11px;color:var(--muted)">${s.color} · ${s.size}</div></div>
+      <div style="text-align:right"><span class="status-badge ${cls}">${s.packs}p / ${s.cartons}c</span></div>
+    </div>`).join('');
+
+  let html = '';
+  if (!out.length && !critical.length && !low.length) {
+    html = '<div style="text-align:center;padding:40px;color:var(--green);font-size:15px;font-weight:600">✅ All stock levels OK</div>';
+  } else {
+    if (out.length)      html += `<div class="alert-section-title" style="color:var(--red)">🔴 Out of Stock (${out.length})</div><div class="inv-table-wrap" style="margin-bottom:12px">${makeRows(out,'status-out')}</div>`;
+    if (critical.length) html += `<div class="alert-section-title" style="color:var(--red)">⚠️ Critical (${critical.length})</div><div class="inv-table-wrap" style="margin-bottom:12px">${makeRows(critical,'status-critical')}</div>`;
+    if (low.length)      html += `<div class="alert-section-title" style="color:var(--yellow)">🟡 Low Stock (${low.length})</div><div class="inv-table-wrap">${makeRows(low,'status-low')}</div>`;
+  }
+  document.getElementById('alerts-content').innerHTML = html;
+}
+
+// ── LOG ───────────────────────────────────────────────────────
+function setLogFilter(el, f) {
+  document.querySelectorAll('.filter-btn[data-lf]').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  logFilter = f;
+  renderLog();
+}
+
+function renderLog() {
+  let txs = [...transactions];
+  if (logFilter === 'addback') txs = txs.filter(t=>t.type==='addback');
+  else if (logFilter !== 'all') txs = txs.filter(t=>t.channel===logFilter);
+
+  document.getElementById('log-tbody').innerHTML = txs.slice(0,100).map(t => {
+    const d = new Date(t.created_at);
+    const dt = d.toLocaleDateString()+' '+d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    const sign = t.type==='deduct' ? '-' : '+';
+    const cls  = t.type==='deduct' ? 'type-deduct' : 'type-addback';
+    return `<tr>
+      <td style="color:var(--muted);white-space:nowrap">${dt}</td>
+      <td style="font-weight:600">${t.sku}</td>
+      <td class="${cls}">${t.type==='deduct'?'Deduct':'Add Back'}</td>
+      <td class="${cls}">${sign}${t.qty}</td>
+      <td>${t.unit||''}</td>
+      <td>${t.channel||''}</td>
+      <td style="color:var(--muted)">${t.note||''}</td>
+      <td><button class="btn btn-sm btn-gray" onclick="undoTx('${t.id}')">↩</button></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--muted)">No transactions</td></tr>';
+}
+
+async function undoTx(id) {
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/transactions?id=eq.${id}`, {
+      method:'DELETE', headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`}
+    });
+  } catch(e) {}
+  transactions = transactions.filter(t=>String(t.id)!==String(id));
+  buildInventory(); renderAll();
+  toast('↩ Undone');
+}
+
+async function undoLast() {
+  if (!transactions.length) { toast('No transactions to undo'); return; }
+  await undoTx(transactions[0].id);
+}
+
+// ── SCAN ──────────────────────────────────────────────────────
+function lookupBarcode(code) {
+  if (!code) return;
+  const entry = BMAP[code];
+  if (!entry) { toast('Barcode not found', 'err'); return; }
+  const item = inventory.find(s=>s.sku===entry.sku);
+  if (!item) { toast('SKU not found', 'err'); return; }
+  scanSku = entry.sku;
+  document.getElementById('scan-result').innerHTML = `
+    <div style="background:#f8fafc;border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:12px">
+      <div style="font-size:14px;font-weight:700">${entry.sku}</div>
+      <div style="font-size:12px;color:var(--muted)">${item.color} · ${item.size} · Pallet ${entry.pallet}</div>
+      <div style="display:flex;gap:16px;margin-top:8px">
+        <div><div style="font-size:18px;font-weight:700;color:var(--blue)">${item.packs}</div><div style="font-size:11px;color:var(--muted)">Packs</div></div>
+        <div><div style="font-size:18px;font-weight:700;color:var(--blue)">${item.cartons}</div><div style="font-size:11px;color:var(--muted)">Cartons</div></div>
+      </div>
+    </div>`;
+  document.getElementById('scan-deduct').style.display = 'block';
+  stopScan();
+}
+
+async function startScan() {
+  if (!window.ZXing) {
+    toast('Loading scanner...');
+    await new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/@zxing/library@0.19.1/umd/index.min.js'; s.onload=res; s.onerror=rej; document.head.appendChild(s); });
+  }
+  const video = document.getElementById('video');
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    video.srcObject = stream; video.style.display='block';
+    document.getElementById('scan-placeholder').style.display='none';
+    scanActive = true;
+    zxingReader = new ZXing.BrowserMultiFormatReader();
+    zxingReader.decodeFromStream(stream, video, (result,err)=>{ if(result&&scanActive){ scanActive=false; lookupBarcode(result.getText()); } });
+  } catch(e) { toast('Camera denied','err'); }
+}
+
+function stopScan() {
+  scanActive = false;
+  if (zxingReader) { try{zxingReader.reset();}catch(e){} zxingReader=null; }
+  const v = document.getElementById('video');
+  if (v.srcObject) { v.srcObject.getTracks().forEach(t=>t.stop()); v.srcObject=null; }
+  v.style.display='none';
+  document.getElementById('scan-placeholder').style.display='block';
+}
+
+async function deductFromScan() {
+  if (!scanSku) { toast('Scan a barcode first','err'); return; }
+  const channel = document.getElementById('sc-channel').value;
+  const unit    = document.getElementById('sc-unit').value;
+  const qty     = parseInt(document.getElementById('sc-qty').value)||1;
+  const item    = inventory.find(s=>s.sku===scanSku);
+  const avail   = unit==='packs' ? item.packs : item.cartons;
+  if (qty > avail) { toast(`Only ${avail} ${unit} available`,'err'); return; }
+  await saveTransaction({sku:scanSku,unit,qty,type:'deduct',channel,source:'scan',note:'Scan deduct',created_at:new Date().toISOString()});
+  document.getElementById('scan-result').innerHTML='';
+  document.getElementById('scan-deduct').style.display='none';
+  document.getElementById('manual-bc').value='';
+  scanSku=null;
+  toast(`✅ Deducted ${qty} ${unit}`);
+}
+
+// ── PICK ──────────────────────────────────────────────────────
+function addPickItem() {
+  const sku=document.getElementById('pick-sku').value.trim();
+  const qty=parseInt(document.getElementById('pick-qty').value);
+  if (!sku||!qty) { toast('Enter SKU and qty','err'); return; }
+  if (!inventory.find(s=>s.sku===sku)) { toast('SKU not found','err'); return; }
+  pickQueue.push({sku,qty});
+  document.getElementById('pick-sku').value='';
+  renderPickQueue();
+}
+
+function parseBulk() {
+  const text=document.getElementById('pick-bulk').value.trim();
+  let added=0;
+  text.split('\n').forEach(line=>{
+    const [sku,qty]=line.split(',').map(s=>s.trim());
+    if (sku&&qty&&inventory.find(s=>s.sku===sku)) { pickQueue.push({sku,qty:parseInt(qty)}); added++; }
+  });
+  document.getElementById('pick-bulk').value='';
+  renderPickQueue();
+  toast(`Added ${added} items`);
+}
+
+function clearPick() { pickQueue=[]; pickPlan=[]; renderPickQueue(); document.getElementById('pick-plan-wrap').style.display='none'; }
+
+function renderPickQueue() {
+  if (!pickQueue.length) { document.getElementById('pick-queue-wrap').style.display='none'; return; }
+  document.getElementById('pick-queue-wrap').style.display='block';
+  document.getElementById('pick-queue-list').innerHTML = pickQueue.map((p,i)=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:#f8fafc;border-radius:6px;margin-bottom:4px">
+      <span style="font-size:13px;font-weight:600">${p.sku}</span>
+      <span style="display:flex;gap:6px;align-items:center"><span style="color:var(--muted);font-size:12px">qty: ${p.qty}</span>
+      <button class="btn btn-sm btn-gray" onclick="pickQueue.splice(${i},1);renderPickQueue()">✕</button></span>
+    </div>`).join('');
+}
+
+function generatePlan() {
+  const mode     = document.getElementById('pick-mode').value;
+  const platform = document.getElementById('pick-platform') ? document.getElementById('pick-platform').value : 'Amazon FBA';
+  pickPlan = pickQueue.map(item => {
+    const {sku, qty} = item;
+    const invItem = inventory.find(s => s.sku === sku);
+    const ppc = invItem?.ppc || 8;
+    const steps = [];
+    let rem = qty;
+    const palletNums = Object.keys(PALLET_DATA).map(Number).sort((a,b)=>a-b);
+    if (mode === 'cartons') {
+      palletNums.forEach(p => {
+        if (rem <= 0) return;
+        const v = PALLET_DATA[String(p)]?.[sku];
+        if (!v || v.fullCartons <= 0) return;
+        const take = Math.min(rem, v.fullCartons);
+        steps.push({pallet:p, type:'full', cartons:take, packs:take*(v.ppc||ppc)});
+        rem -= take;
+      });
+    } else if (mode === 'pallet') {
+      palletNums.forEach(p => {
+        if (rem <= 0) return;
+        const v = PALLET_DATA[String(p)]?.[sku];
+        if (!v) return;
+        const eppc = v.ppc||ppc;
+        let ps = {pallet:p, type:'mixed', packs:0, cartons:0, openPacks:0};
+        if (v.openPacks > 0 && rem > 0) { const t=Math.min(rem,v.openPacks); ps.openPacks=t; ps.packs+=t; rem-=t; }
+        if (v.fullCartons > 0 && rem > 0) { const t=Math.min(Math.ceil(rem/eppc),v.fullCartons); ps.cartons=t; ps.packs+=t*eppc; rem-=t*eppc; }
+        if (ps.packs > 0 || ps.cartons > 0) steps.push(ps);
+      });
+    } else {
+      palletNums.forEach(p => {
+        if (rem <= 0) return;
+        const v = PALLET_DATA[String(p)]?.[sku];
+        if (!v || v.openPacks <= 0) return;
+        const take = Math.min(rem, v.openPacks);
+        steps.push({pallet:p, type:'open', packs:take});
+        rem -= take;
+      });
+      palletNums.forEach(p => {
+        if (rem <= 0) return;
+        const v = PALLET_DATA[String(p)]?.[sku];
+        if (!v || v.fullCartons <= 0) return;
+        const eppc = v.ppc||ppc;
+        const take = Math.min(Math.ceil(rem/eppc), v.fullCartons);
+        steps.push({pallet:p, type:'full', cartons:take, packs:take*eppc});
+        rem -= take*eppc;
+      });
+    }
+    return {sku, qty, platform, steps, short:Math.max(0,rem)};
+  });
+  document.getElementById('pick-plan-wrap').style.display='block';
+  document.getElementById('pick-plan-steps').innerHTML = pickPlan.map(p => {
+    const invItem = inventory.find(s=>s.sku===p.sku)||{};
+    const totalPacks = p.steps.reduce((a,s)=>a+(s.packs||0),0);
+    const stepLines = p.steps.map(s => {
+      if (s.type==='open') return `<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--border)"><span>📂</span><div><span style="font-weight:600">Pallet ${s.pallet}</span><span style="color:var(--muted);font-size:12px"> — take <strong style="color:var(--orange)">${s.packs} packs</strong> from open carton</span></div></div>`;
+      if (s.type==='full') return `<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--border)"><span>📦</span><div><span style="font-weight:600">Pallet ${s.pallet}</span><span style="color:var(--muted);font-size:12px"> — take <strong style="color:var(--blue)">${s.cartons} full carton${s.cartons!==1?'s':''}</strong> (${s.packs} packs)</span></div></div>`;
+      let parts=[];
+      if (s.openPacks>0) parts.push(`<strong style="color:var(--orange)">${s.openPacks} packs</strong> from open carton`);
+      if (s.cartons>0) parts.push(`<strong style="color:var(--blue)">${s.cartons} full carton${s.cartons!==1?'s':''}</strong>`);
+      return `<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--border)"><span>🏭</span><div><span style="font-weight:600">Pallet ${s.pallet}</span><span style="color:var(--muted);font-size:12px"> — ${parts.join(' + ')}</span></div></div>`;
+    }).join('');
+    return `<div class="pick-step-item" style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+        <div><div style="font-size:13px;font-weight:700">${p.sku}</div><div style="font-size:11px;color:var(--muted)">${invItem.color||''} · ${invItem.size||''}</div></div>
+        <div style="text-align:right"><div style="font-size:12px;font-weight:700;color:var(--blue)">${p.qty} units → ${p.platform}</div><div style="font-size:11px;color:var(--muted)">${totalPacks} packs total</div></div>
+      </div>
+      ${stepLines}
+      ${p.short>0?`<div style="color:var(--red);font-size:12px;margin-top:4px;font-weight:600">⚠️ Short by ${p.short}</div>`:'<div style="color:var(--green);font-size:11px;margin-top:4px">✅ Fully covered</div>'}
+    </div>`;
+  }).join('');
+}
+
+async function confirmPick() {
+  const platform = document.getElementById('pick-platform') ? document.getElementById('pick-platform').value : 'Amazon FBA';
+  const channel = platform;
+  for (const p of pickPlan) {
+    const tp=p.steps.reduce((a,s)=>a+(s.packs||0),0);
+    const tc=p.steps.reduce((a,s)=>a+(s.cartons||0),0);
+    if (document.getElementById('pick-mode').value==='cartons' && tc>0)
+      await saveTransaction({sku:p.sku,unit:'cartons',qty:tc,type:'deduct',channel,source:'pick',note:'Pick order',created_at:new Date().toISOString()});
+    else if (tp>0)
+      await saveTransaction({sku:p.sku,unit:'packs',qty:tp,type:'deduct',channel,source:'pick',note:'Pick order',created_at:new Date().toISOString()});
+  }
+  pickQueue=[]; pickPlan=[];
+  document.getElementById('pick-queue-wrap').style.display='none';
+  document.getElementById('pick-plan-wrap').style.display='none';
+  toast('✅ Pick confirmed & logged to ' + channel);
+}
+
+// ── NAVIGATION ────────────────────────────────────────────────
+function switchPage(name) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item[data-page]').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  document.querySelector(`.nav-item[data-page="${name}"]`).classList.add('active');
+  if (name!=='scan') stopScan();
+}
+
+// ── AMAZON ────────────────────────────────────────────────────
+function setAmzTab(el, t) {
+  document.querySelectorAll('.filter-btn[data-at]').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  ['fba','orders','shipments','returns'].forEach(p=>
+    document.getElementById('amz-'+p+'-panel').style.display = p===t?'block':'none');
+}
+
+async function getAmzToken() {
+  if (amzToken && Date.now() < amzExpiry) return amzToken;
+  const res = await fetch('https://api.amazon.com/auth/o2/token',{
+    method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body: new URLSearchParams({grant_type:'refresh_token',refresh_token:AMZ_REFRESH_TOKEN,client_id:AMZ_CLIENT_ID,client_secret:AMZ_CLIENT_SECRET})
+  });
+  const d = await res.json();
+  if (!d.access_token) throw new Error(d.error_description||'Auth failed');
+  amzToken=d.access_token; amzExpiry=Date.now()+(d.expires_in-60)*1000;
+  return amzToken;
+}
+
+async function amzGet(path) {
+  const token = await getAmzToken();
+  const res = await fetch('https://sellingpartnerapi-na.amazon.com'+path,{
+    headers:{'x-amz-access-token':token,'Content-Type':'application/json'}
+  });
+  if (!res.ok) { const e=await res.json().catch(()=>({})); throw new Error(e.errors?.[0]?.message||`HTTP ${res.status}`); }
+  return res.json();
+}
+
+async function syncAmazon() {
+  document.getElementById('amz-sync-time').textContent='Syncing...';
+  try {
+    await Promise.all([loadFBAInventory(),loadOrders(),loadShipments(),loadReturns()]);
+    document.getElementById('amz-sync-time').textContent='Synced '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    toast('✅ Amazon synced!');
+  } catch(e) { toast('❌ '+e.message,'err'); document.getElementById('amz-sync-time').textContent='Error'; }
+}
+
+async function loadFBAInventory() {
+  const el=document.getElementById('amz-fba-panel');
+  try {
+    const data=await amzGet(`/fba/inventory/v1/summaries?details=true&granularityType=Marketplace&granularityId=${AMZ_MARKETPLACE_ID}&marketplaceIds=${AMZ_MARKETPLACE_ID}`);
+    const items=data.payload?.inventorySummaries||[];
+    if(!items.length){el.innerHTML='<div style="padding:24px;color:var(--muted)">No FBA inventory</div>';return;}
+    el.innerHTML=`<div class="inv-table-wrap"><table class="inv-table"><thead><tr><th>SKU</th><th>Fulfillable</th><th>Inbound</th><th>Reserved</th></tr></thead><tbody>${items.map(i=>`<tr><td style="font-weight:600">${i.sellerSku||i.asin}</td><td style="color:var(--green);font-weight:700">${i.inventoryDetails?.fulfillableQuantity||0}</td><td style="color:var(--yellow)">${(i.inventoryDetails?.inboundWorkingQuantity||0)+(i.inventoryDetails?.inboundShippedQuantity||0)}</td><td style="color:var(--muted)">${i.inventoryDetails?.reservedQuantity?.totalReservedQuantity||0}</td></tr>`).join('')}</tbody></table></div>`;
+  }catch(e){el.innerHTML=`<div style="padding:12px;color:var(--red)">❌ ${e.message}</div>`;}
+}
+
+async function loadOrders() {
+  const el=document.getElementById('amz-orders-panel');
+  try {
+    const from=new Date(Date.now()-30*864e5).toISOString();
+    const data=await amzGet(`/orders/v0/orders?MarketplaceIds=${AMZ_MARKETPLACE_ID}&CreatedAfter=${encodeURIComponent(from)}`);
+    const orders=data.payload?.Orders||[];
+    el.innerHTML=`<div class="inv-table-wrap"><table class="inv-table"><thead><tr><th>Order ID</th><th>Date</th><th>Status</th><th>Total</th></tr></thead><tbody>${orders.slice(0,30).map(o=>`<tr><td style="font-weight:600">${o.AmazonOrderId}</td><td style="color:var(--muted)">${new Date(o.PurchaseDate).toLocaleDateString()}</td><td><span class="status-badge ${o.OrderStatus==='Shipped'?'status-ok':o.OrderStatus==='Canceled'?'status-out':'status-low'}">${o.OrderStatus}</span></td><td>${o.OrderTotal?'$'+parseFloat(o.OrderTotal.Amount).toFixed(2):'-'}</td></tr>`).join('')}</tbody></table></div>`;
+  }catch(e){el.innerHTML=`<div style="padding:12px;color:var(--red)">❌ ${e.message}</div>`;}
+}
+
+async function loadShipments() {
+  const el=document.getElementById('amz-shipments-panel');
+  try {
+    const data=await amzGet(`/fba/inbound/v0/shipments?MarketplaceId=${AMZ_MARKETPLACE_ID}&ShipmentStatusList=WORKING,SHIPPED,IN_TRANSIT,DELIVERED,CHECKED_IN,RECEIVING,CLOSED`);
+    const s=data.payload?.ShipmentData||[];
+    el.innerHTML=s.length?`<div class="inv-table-wrap"><table class="inv-table"><thead><tr><th>Shipment ID</th><th>Name</th><th>Destination</th><th>Status</th></tr></thead><tbody>${s.map(x=>`<tr><td style="font-weight:600">${x.ShipmentId}</td><td>${x.ShipmentName||'-'}</td><td>${x.DestinationFulfillmentCenterId||'-'}</td><td><span class="status-badge ${x.ShipmentStatus==='CLOSED'?'status-ok':'status-low'}">${x.ShipmentStatus}</span></td></tr>`).join('')}</tbody></table></div>`:'<div style="padding:24px;color:var(--muted)">No shipments found</div>';
+  }catch(e){el.innerHTML=`<div style="padding:12px;color:var(--red)">❌ ${e.message}</div>`;}
+}
+
+async function loadReturns() {
+  const el=document.getElementById('amz-returns-panel');
+  try {
+    const from=new Date(Date.now()-60*864e5).toISOString().split('T')[0];
+    const to=new Date().toISOString().split('T')[0];
+    const data=await amzGet(`/seller/v1/returns?marketplaceIds=${AMZ_MARKETPLACE_ID}&createdAfter=${from}&createdBefore=${to}`);
+    const r=data.payload?.Returns||[];
+    el.innerHTML=r.length?`<div class="inv-table-wrap"><table class="inv-table"><thead><tr><th>Order</th><th>Item</th><th>Reason</th></tr></thead><tbody>${r.map(x=>`<tr><td>${x.orderId||x.AmazonOrderId}</td><td>${x.itemTitle||'-'}</td><td style="color:var(--red)">${x.returnReason||x.ReturnReason||'-'}</td></tr>`).join('')}</tbody></table></div>`:'<div style="padding:24px;color:var(--green);text-align:center;font-weight:600">✅ No returns in last 60 days</div>';
+  }catch(e){el.innerHTML=`<div style="padding:12px;color:var(--red)">❌ ${e.message}</div>`;}
+}
+
+// ── TOAST ─────────────────────────────────────────────────────
+function toast(msg, type) {
+  const el=document.getElementById('toast');
+  el.textContent=msg;
+  el.style.background=type==='err'?'var(--red)':type==='warn'?'var(--yellow)':'var(--green)';
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),2500);
+}
+
+
+// ── REPORTS ───────────────────────────────────────────────────
+let currentReport = 'inventory';
+
+function setReportType(el, type) {
+  document.querySelectorAll('.filter-btn[data-rt]').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  currentReport = type;
+  document.getElementById('rpt-channel-wrap').style.display = type==='outbound' ? 'block' : 'none';
+  renderReport();
+}
+
+function setDatePreset(preset) {
+  const now = new Date();
+  const fmt = d => d.toISOString().split('T')[0];
+  let from, to = fmt(now);
+  if (preset==='today') { from=fmt(now); }
+  else if (preset==='7d') { const d=new Date(now); d.setDate(d.getDate()-7); from=fmt(d); }
+  else if (preset==='30d') { const d=new Date(now); d.setDate(d.getDate()-30); from=fmt(d); }
+  else if (preset==='mtd') { from=fmt(new Date(now.getFullYear(),now.getMonth(),1)); }
+  else { from='2020-01-01'; }
+  document.getElementById('rpt-from').value = from;
+  document.getElementById('rpt-to').value   = to;
+  renderReport();
+}
+
+function getDateRange() {
+  const from = document.getElementById('rpt-from').value;
+  const to   = document.getElementById('rpt-to').value;
+  return { from: from ? new Date(from+'T00:00:00') : null, to: to ? new Date(to+'T23:59:59') : null };
+}
+
+function filterTxByDate(txs) {
+  const {from, to} = getDateRange();
+  return txs.filter(t => {
+    const d = new Date(t.created_at);
+    if (from && d < from) return false;
+    if (to   && d > to)   return false;
+    return true;
+  });
+}
+
+function renderReport() {
+  if (currentReport==='inventory') renderInventoryReport();
+  else renderOutboundReport();
+}
+
+function renderInventoryReport() {
+  const totalPacks   = inventory.reduce((a,s)=>a+s.packs,0);
+  const totalCartons = inventory.reduce((a,s)=>a+s.cartons,0);
+  const outStock     = inventory.filter(s=>s.packs===0).length;
+  const lowStock     = inventory.filter(s=>getStatus(s)==='low'||getStatus(s)==='critical').length;
+  document.getElementById('rpt-stats').innerHTML = `
+    <div class="stat-box green"><div class="val">${totalPacks.toLocaleString()}</div><div class="lbl">Total Packs</div></div>
+    <div class="stat-box blue"><div class="val">${totalCartons}</div><div class="lbl">Total Cartons</div></div>
+    <div class="stat-box red"><div class="val">${outStock}</div><div class="lbl">Out of Stock</div></div>
+    <div class="stat-box orange"><div class="val">${lowStock}</div><div class="lbl">Low / Critical</div></div>`;
+  document.getElementById('rpt-thead').innerHTML = `<tr><th>SKU</th><th>Color</th><th>Size</th><th>Cartons</th><th>Packs</th><th>PPC</th><th>% Remaining</th><th>Status</th></tr>`;
+  const statusLabel={ok:'OK',low:'Low',critical:'Critical',out:'Out'};
+  const statusClass={ok:'status-ok',low:'status-low',critical:'status-critical',out:'status-out'};
+  document.getElementById('rpt-tbody').innerHTML = [...inventory].sort((a,b)=>a.sku.localeCompare(b.sku)).map(s => {
+    const st  = getStatus(s);
+    const pct = s.totalPacks>0 ? Math.round((s.packs/s.totalPacks)*100) : 0;
+    const bc  = st==='ok'?'var(--green)':st==='low'?'var(--yellow)':'var(--red)';
+    return `<tr>
+      <td style="font-weight:600">${s.sku}</td><td>${s.color}</td><td>${s.size}</td>
+      <td style="font-weight:700;color:var(--blue)">${s.cartons}</td>
+      <td style="font-weight:700">${s.packs}</td>
+      <td style="color:var(--muted)">${s.ppc}</td>
+      <td><div style="display:flex;align-items:center;gap:6px"><div style="width:70px;height:6px;background:var(--border);border-radius:3px"><div style="width:${pct}%;height:100%;background:${bc};border-radius:3px"></div></div><span style="font-size:12px;color:var(--muted)">${pct}%</span></div></td>
+      <td><span class="status-badge ${statusClass[st]}">${statusLabel[st]}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderOutboundReport() {
+  const channel = document.getElementById('rpt-channel').value;
+  let txs = filterTxByDate(transactions).filter(t=>t.type==='deduct');
+  if (channel!=='all') txs = txs.filter(t=>t.channel===channel);
+  const bysku = {};
+  txs.forEach(t => {
+    if (!bysku[t.sku]) bysku[t.sku]={sku:t.sku,packsOut:0,cartonsOut:0,txCount:0,channels:new Set(),lastDate:null};
+    const b=bysku[t.sku];
+    if (t.unit==='packs')   b.packsOut   += (t.qty||0);
+    if (t.unit==='cartons') b.cartonsOut += (t.qty||0);
+    b.txCount++;
+    if (t.channel) b.channels.add(t.channel);
+    const d=new Date(t.created_at);
+    if (!b.lastDate||d>b.lastDate) b.lastDate=d;
+  });
+  const rows = Object.values(bysku).sort((a,b)=>(b.packsOut+b.cartonsOut*8)-(a.packsOut+a.cartonsOut*8));
+  const totalPacksOut=rows.reduce((a,r)=>a+r.packsOut,0);
+  const totalCartonsOut=rows.reduce((a,r)=>a+r.cartonsOut,0);
+  document.getElementById('rpt-stats').innerHTML = `
+    <div class="stat-box red"><div class="val">${totalPacksOut.toLocaleString()}</div><div class="lbl">Packs Out</div></div>
+    <div class="stat-box orange"><div class="val">${totalCartonsOut}</div><div class="lbl">Cartons Out</div></div>
+    <div class="stat-box blue"><div class="val">${txs.length}</div><div class="lbl">Transactions</div></div>
+    <div class="stat-box"><div class="val">${rows.length}</div><div class="lbl">SKUs Moved</div></div>`;
+  document.getElementById('rpt-thead').innerHTML = `<tr><th>SKU</th><th>Packs Out</th><th>Cartons Out</th><th>Transactions</th><th>Channels</th><th>Last Movement</th></tr>`;
+  document.getElementById('rpt-tbody').innerHTML = rows.length
+    ? rows.map(r=>`<tr>
+        <td style="font-weight:600">${r.sku}</td>
+        <td style="font-weight:700;color:var(--red)">${r.packsOut}</td>
+        <td style="font-weight:700;color:var(--orange)">${r.cartonsOut}</td>
+        <td style="color:var(--muted)">${r.txCount}</td>
+        <td style="font-size:12px">${[...r.channels].join(', ')||'-'}</td>
+        <td style="color:var(--muted);font-size:12px">${r.lastDate?r.lastDate.toLocaleDateString():'-'}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--muted)">No outbound transactions in this date range</td></tr>';
+}
+
+function exportReportCSV() {
+  let csv = '';
+  const headers = [...document.getElementById('rpt-thead').querySelectorAll('th')].map(th=>th.textContent.replace(/[↕]/g,'').trim());
+  csv += headers.join(',') + '\n';
+  [...document.getElementById('rpt-tbody').querySelectorAll('tr')].forEach(tr => {
+    const cells = [...tr.querySelectorAll('td')].map(td=>'"'+td.textContent.trim().replace(/,/g,' ')+'"');
+    if (cells.length) csv += cells.join(',') + '\n';
+  });
+  const blob = new Blob([csv],{type:'text/csv'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href=url; a.download=`uscasa_${currentReport}_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  toast('✅ CSV exported!');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const now = new Date();
+  const d30 = new Date(now); d30.setDate(d30.getDate()-30);
+  if (document.getElementById('rpt-to'))   document.getElementById('rpt-to').value   = now.toISOString().split('T')[0];
+  if (document.getElementById('rpt-from')) document.getElementById('rpt-from').value = d30.toISOString().split('T')[0];
+});
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
