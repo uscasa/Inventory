@@ -222,6 +222,13 @@ tbody td{padding:10px 14px;vertical-align:middle}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://cmfpggrbwtlenfiobloa.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtZnBnZ3Jid3RsZW5maW9ibG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MDA4ODEsImV4cCI6MjA5MTA3Njg4MX0.0q9MYMGgEfpzE_V-7u1S5R_k5fdsQlgYgTekiVD8Mdo';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+</script>
 </head>
 <body>
 
@@ -235,7 +242,7 @@ tbody td{padding:10px 14px;vertical-align:middle}
   <button class="nav-btn" data-page="reports"><span class="ni">📊</span><span>Reports</span></button>
   <div class="nav-right">
     <button class="nav-btn" onclick="resetAllPicks()" title="Clear all live picks and reset to scan baseline" style="color:#f87171;font-size:11px">↺ Reset Picks</button>
-    <div class="live-badge"><div class="live-dot"></div>Live</div>
+    <div class="live-badge" id="sync-badge"><div class="live-dot" id="sync-dot"></div><span id="sync-label">Connecting...</span></div>
   </div>
 </nav>
 
@@ -467,27 +474,106 @@ let invStatus = '';
 // ══════════════════════════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════════════════════════
-function init() {
-  // Restore persisted live picks and pallet state from localStorage
+async function init() {
+  showSyncStatus('connecting');
+
+  // Load all picks from Supabase
   try {
-    const saved = localStorage.getItem('usc_livePickLog');
-    if (saved) {
-      livePickLog = JSON.parse(saved);
-      // Merge live picks into txLog so Log tab shows them
-      // Insert at front (they are newer than historical entries)
-      livePickLog.forEach(function(entry) {
-        // Only add if not already present
-        const exists = txLog.some(function(t) { return t.time === entry.time && t.sku === entry.sku; });
-        if (!exists) txLog.unshift(entry);
-      });
-    }
-  } catch(e) {}
-  // PALLET_DATA is always rebuilt from hardcoded baseline + livePickLog replay
-  // Never load from localStorage — avoids stale/corrupted state
+    const { data, error } = await sb
+      .from('picks')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    // Map Supabase rows to our log format
+    livePickLog = data.map(function(r) {
+      return {
+        id:      r.id,
+        time:    r.created_at,
+        type:    r.type || 'out',
+        sku:     r.sku,
+        color:   r.color,
+        size:    r.size,
+        channel: r.channel,
+        packs:   r.packs,
+        ctns:    r.ctns || 0,
+        pallets: r.pallets,
+        note:    r.note
+      };
+    });
+
+    // Merge into txLog
+    livePickLog.forEach(function(entry) {
+      var exists = txLog.some(function(t) { return t.time === entry.time && t.sku === entry.sku; });
+      if (!exists) txLog.unshift(entry);
+    });
+
+    showSyncStatus('live');
+  } catch(e) {
+    console.error('Supabase load error:', e);
+    showSyncStatus('error');
+    // Fallback to localStorage
+    try {
+      var saved = localStorage.getItem('usc_livePickLog');
+      if (saved) {
+        livePickLog = JSON.parse(saved);
+        livePickLog.forEach(function(entry) {
+          var exists = txLog.some(function(t) { return t.time === entry.time && t.sku === entry.sku; });
+          if (!exists) txLog.unshift(entry);
+        });
+      }
+    } catch(e2) {}
+  }
+
   buildInventory();
   populateSKULists();
   populatePalletSelect();
   renderAll();
+
+  // Poll Supabase every 5 seconds for new picks from other team members
+  setInterval(async function() {
+    try {
+      var lastTime = livePickLog.length > 0 ? livePickLog[0].time : '1970-01-01';
+      var { data, error } = await sb
+        .from('picks')
+        .select('*')
+        .gt('created_at', lastTime)
+        .order('created_at', { ascending: false });
+      if (error || !data || !data.length) return;
+      var added = false;
+      data.forEach(function(r) {
+        var exists = livePickLog.some(function(t) { return t.id === r.id; });
+        if (!exists) {
+          var entry = {
+            id:      r.id,
+            time:    r.created_at,
+            type:    r.type || 'out',
+            sku:     r.sku,
+            color:   r.color,
+            size:    r.size,
+            channel: r.channel,
+            packs:   r.packs,
+            ctns:    r.ctns || 0,
+            pallets: r.pallets,
+            note:    r.note
+          };
+          livePickLog.unshift(entry);
+          txLog.unshift(entry);
+          added = true;
+          toast('🔄 ' + r.sku + ' picked by team', 'info');
+        }
+      });
+      if (added) {
+        buildInventory();
+        renderStats();
+        renderInventory();
+        renderPallets();
+        renderAlerts();
+        renderLog();
+      }
+    } catch(e) {}
+  }, 5000);
   document.querySelectorAll('.nav-btn[data-page]').forEach(b =>
     b.addEventListener('click', () => switchPage(b.dataset.page)));
   document.getElementById('inv-search').addEventListener('input', e => { invFilter = e.target.value; renderInventory(); });
@@ -1013,10 +1099,36 @@ function confirmPick() {
   document.getElementById('plan-output').style.display = 'none';
   renderQueue();
 
-  // Persist to localStorage so refresh doesn't wipe picks
-  try {
-    localStorage.setItem('usc_livePickLog', JSON.stringify(livePickLog));
-  } catch(e) {}
+  // Save to Supabase (real-time sync to all team members)
+  var rows = livePickLog.slice(0, count).map(function(e) {
+    return {
+      sku:     e.sku,
+      color:   e.color,
+      size:    e.size,
+      channel: e.channel,
+      packs:   e.packs,
+      ctns:    e.ctns,
+      pallets: e.pallets,
+      note:    e.note,
+      type:    e.type
+    };
+  });
+
+  sb.from('picks').insert(rows).then(function(result) {
+    if (result.error) {
+      console.error('Supabase save error:', result.error);
+      // Fallback: save to localStorage
+      try { localStorage.setItem('usc_livePickLog', JSON.stringify(livePickLog)); } catch(e) {}
+      toast('⚠️ Saved locally (offline)', 'err');
+    } else {
+      // Update IDs from Supabase response
+      if (result.data) {
+        result.data.forEach(function(r, i) {
+          if (livePickLog[i]) livePickLog[i].id = r.id;
+        });
+      }
+    }
+  });
 
   // Recalculate live inventory counts from BASE_INV minus livePickLog
   buildInventory();
@@ -1695,18 +1807,43 @@ function downloadPickPlanPDF() {
   toast('✅ Pick Plan PDF downloaded', 'ok');
 }
 
-function resetAllPicks() {
-  if (!confirm('Reset all live picks? This restores counts to the original warehouse scan. Historical log entries are kept.')) return;
+async function resetAllPicks() {
+  if (!confirm('Reset all live picks for the WHOLE TEAM? This restores counts to the original warehouse scan. Historical log entries are kept.')) return;
+  // Delete all picks from Supabase
+  var { error } = await sb.from('picks').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  if (error) { toast('Error clearing Supabase: ' + error.message, 'err'); return; }
   // Remove live picks from txLog
   txLog = txLog.filter(function(t) { return !(t.note && t.note.startsWith('Pick:')); });
   livePickLog = [];
-  try {
-    localStorage.removeItem('usc_livePickLog');
-  } catch(e) {}
-  // buildInventory will auto-reset PALLET_DATA from _PALLET_DATA_ORIG
+  try { localStorage.removeItem('usc_livePickLog'); } catch(e) {}
   buildInventory();
   renderAll();
   toast('↺ Picks reset to warehouse scan baseline', 'info');
+}
+
+function showSyncStatus(status) {
+  var dot   = document.getElementById('sync-dot');
+  var label = document.getElementById('sync-label');
+  var badge = document.getElementById('sync-badge');
+  if (status === 'live') {
+    dot.style.background = '#4ade80';
+    label.textContent = 'Synced';
+    badge.style.background = 'rgba(22,163,74,.15)';
+    badge.style.borderColor = 'rgba(22,163,74,.3)';
+    badge.style.color = '#4ade80';
+  } else if (status === 'connecting') {
+    dot.style.background = '#fbbf24';
+    label.textContent = 'Connecting...';
+    badge.style.background = 'rgba(251,191,36,.15)';
+    badge.style.borderColor = 'rgba(251,191,36,.3)';
+    badge.style.color = '#fbbf24';
+  } else {
+    dot.style.background = '#f87171';
+    label.textContent = 'Offline';
+    badge.style.background = 'rgba(220,38,38,.15)';
+    badge.style.borderColor = 'rgba(220,38,38,.3)';
+    badge.style.color = '#f87171';
+  }
 }
 
 document.addEventListener('DOMContentLoaded', init);
