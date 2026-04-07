@@ -381,7 +381,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 <!-- ═══════════════════════════════════════════════════════ LOG -->
 <div id="page-log" class="page">
   <div class="toolbar">
-    <select class="sel" id="log-ch">
+    <select class="sel" id="log-ch" onchange="renderLog()">
       <option value="">All Channels</option>
       <option value="Amazon FBA">Amazon FBA</option>
       <option value="eBay">eBay</option>
@@ -390,6 +390,11 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       <option value="Wholesale">Wholesale</option>
       <option value="Adjustment">Adjustment</option>
     </select>
+    <input type="date" class="sel" id="log-date-from" onchange="renderLog()" title="From date" style="width:140px">
+    <input type="date" class="sel" id="log-date-to" onchange="renderLog()" title="To date" style="width:140px">
+    <button class="btn btn-gray btn-sm" onclick="clearLogDates()">Clear Dates</button>
+    <button class="btn btn-gray btn-sm" onclick="setLogToday()">Today</button>
+    <button class="btn btn-gray btn-sm" onclick="setLogThisWeek()">This Week</button>
     <button class="btn btn-gray btn-sm" style="margin-left:auto" onclick="undoLast()">↩ Undo Last</button>
     <button class="btn btn-gray btn-sm" onclick="exportLog()">⬇ CSV</button>
   </div>
@@ -614,9 +619,21 @@ function buildInventory() {
       if (rem <= 0) break;
       var slot = PALLET_DATA[pKeys[k]][sku];
       if (!slot || !slot.fullCartons) continue;
-      var ctns = Math.min(slot.fullCartons, Math.ceil(rem / ppc));
-      slot.fullCartons -= ctns;
-      rem -= ctns * ppc;
+      var fullCtnsNeeded = Math.floor(rem / ppc);  // full cartons taken completely
+      var remainder = rem % ppc;                   // leftover packs needed
+      // Take full cartons first
+      if (fullCtnsNeeded > 0) {
+        var take = Math.min(slot.fullCartons, fullCtnsNeeded);
+        slot.fullCartons -= take;
+        rem -= take * ppc;
+      }
+      // If still need more packs, crack one sealed carton open
+      if (rem > 0 && slot.fullCartons > 0) {
+        slot.fullCartons -= 1;          // remove from sealed
+        slot.openPacks = (slot.openPacks || 0) + (ppc - rem);  // leftover stays as open
+        rem = 0;
+        // fullCartons count DOES decrease by 1 here — a carton was physically opened
+      }
     }
   }
 
@@ -723,13 +740,26 @@ function renderStats() {
   const outCount   = inventory.filter(s => getStatus(s) === 'out').length;
   const critCount  = inventory.filter(s => getStatus(s) === 'critical').length;
   const todayOut   = txLog.filter(t => t.type==='out' && new Date(t.time).toDateString()===new Date().toDateString()).reduce((a,t)=>a+t.packs,0);
-  document.getElementById('inv-stats').innerHTML = `
-    <div class="stat"><div class="sv">${inventory.length}</div><div class="sl">SKUs</div></div>
-    <div class="stat green"><div class="sv">${totalPacks.toLocaleString()}</div><div class="sl">Packs</div></div>
-    <div class="stat blue"><div class="sv">${totalCtns}</div><div class="sl">Cartons</div></div>
-    <div class="stat red"><div class="sv">${critCount}</div><div class="sl">Critical</div></div>
-    <div class="stat orange"><div class="sv">${outCount}</div><div class="sl">Out of Stock</div></div>
-    <div class="stat purple"><div class="sv">${todayOut}</div><div class="sl">Today Out</div></div>`;
+
+  // Count open cartons directly from PALLET_DATA (pallets with openPacks > 0)
+  var openCtns = 0;
+  var palletKeys = Object.keys(PALLET_DATA);
+  for (var k = 0; k < palletKeys.length; k++) {
+    var skus = PALLET_DATA[palletKeys[k]];
+    var skuKeys = Object.keys(skus);
+    for (var m = 0; m < skuKeys.length; m++) {
+      if ((skus[skuKeys[m]].openPacks || 0) > 0) openCtns++;
+    }
+  }
+
+  document.getElementById('inv-stats').innerHTML =
+    '<div class="stat"><div class="sv">' + inventory.length + '</div><div class="sl">SKUs</div></div>' +
+    '<div class="stat green"><div class="sv">' + totalPacks.toLocaleString() + '</div><div class="sl">Packs</div></div>' +
+    '<div class="stat blue"><div class="sv">' + totalCtns + '<span style="font-size:12px;font-weight:500;color:var(--muted);margin-left:4px">sealed</span></div><div class="sl">Cartons</div></div>' +
+    '<div class="stat" style="border-left:3px solid var(--yellow)"><div class="sv" style="color:var(--yellow)">' + openCtns + '</div><div class="sl">Open Cartons</div></div>' +
+    '<div class="stat red"><div class="sv">' + critCount + '</div><div class="sl">Critical</div></div>' +
+    '<div class="stat orange"><div class="sv">' + outCount + '</div><div class="sl">Out of Stock</div></div>' +
+    '<div class="stat purple"><div class="sv">' + todayOut + '</div><div class="sl">Today Out</div></div>';
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -767,7 +797,7 @@ function renderInventory() {
       <td><span class="chip chip-blue">${s.po}</span></td>
       <td>
         <div class="pack-val">${s.packs.toLocaleString()}</div>
-        <div class="pack-sub">${s.ctns} ctns${openPacks>0?` + ${openPacks} loose`:''}</div>
+        <div class="pack-sub">${s.ctns} sealed${openPacks>0?` · <span style='color:var(--yellow)'>${openPacks} loose (open ctn)</span>`:''}</div>
         <div class="prog-bar"><div class="prog-fill ${statusProg[st]}" style="width:${pct}%"></div></div>
       </td>
       <td style="font-weight:700">${s.ctns}</td>
@@ -1068,9 +1098,16 @@ function confirmPick() {
       if (tempRem <= 0) break;
       var slot = PALLET_DATA[pKeys[k]][sku];
       if (!slot || !slot.fullCartons) continue;
-      var ctns = Math.min(slot.fullCartons, Math.ceil(tempRem / ppc));
-      ctnsUsed += ctns;
-      tempRem -= ctns * ppc;
+      var fullCtnsNeeded = Math.floor(tempRem / ppc);
+      if (fullCtnsNeeded > 0) {
+        var take = Math.min(slot.fullCartons, fullCtnsNeeded);
+        ctnsUsed += take;   // only full carton removals count
+        tempRem -= take * ppc;
+      }
+      // Cracking open a partial carton does NOT count as removing a carton
+      if (tempRem > 0 && slot.fullCartons > 0) {
+        tempRem = 0;  // partial carton opened — carton stays in count
+      }
     }
 
     // Build log entry
@@ -1260,41 +1297,123 @@ function renderAlerts() {
 // LOG
 // ══════════════════════════════════════════════════════════════════
 function renderLog() {
-  const ch = document.getElementById('log-ch').value;
-  const list = ch ? txLog.filter(t => t.channel===ch) : txLog;
-  document.getElementById('log-tbody').innerHTML = list.length ? list.map(t => `<tr>
-    <td style="font-size:11px;color:var(--muted);white-space:nowrap">${new Date(t.time).toLocaleString()}</td>
-    <td>${chChip(t.channel)}</td>
-    <td style="font-weight:700;font-size:12px">${t.sku}</td>
-    <td>${t.color}</td>
-    <td>${t.size}</td>
-    <td style="font-size:12px;color:var(--muted)">${t.pallets||'—'}</td>
-    <td class="${t.type==='out'?'qty-neg':'qty-pos'}">${t.type==='out'?'-':'+'}${t.packs}</td>
-    <td style="color:var(--muted)">${t.ctns||'—'}</td>
-    <td style="font-size:12px;color:var(--muted)">${t.note||''}</td>
-  </tr>`).join('')
-  : '<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--muted)">No transactions yet</td></tr>';
+  const ch       = document.getElementById('log-ch').value;
+  const fromVal  = document.getElementById('log-date-from').value;
+  const toVal    = document.getElementById('log-date-to').value;
+  const fromDate = fromVal ? new Date(fromVal + 'T00:00:00') : null;
+  const toDate   = toVal   ? new Date(toVal   + 'T23:59:59') : null;
+
+  let list = txLog.filter(function(t) {
+    if (ch && t.channel !== ch) return false;
+    if (fromDate && new Date(t.time) < fromDate) return false;
+    if (toDate   && new Date(t.time) > toDate)   return false;
+    return true;
+  });
+
+  if (!list.length) {
+    document.getElementById('log-tbody').innerHTML =
+      '<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--muted)">No transactions in this range</td></tr>';
+    return;
+  }
+
+  // Totals
+  const totalPacks = list.reduce(function(a,t){ return a + (t.type==='out' ? t.packs : -t.packs); }, 0);
+  const totalCtns  = list.reduce(function(a,t){ return a + (t.ctns || 0); }, 0);
+  const totalRows  = list.length;
+
+  const rows = list.map(function(t) {
+    return '<tr>' +
+      '<td style="font-size:11px;color:var(--muted);white-space:nowrap">' + new Date(t.time).toLocaleString() + '</td>' +
+      '<td>' + chChip(t.channel) + '</td>' +
+      '<td style="font-weight:700;font-size:12px">' + t.sku + '</td>' +
+      '<td>' + (t.color||'') + '</td>' +
+      '<td>' + (t.size||'') + '</td>' +
+      '<td style="font-size:12px;color:var(--muted)">' + (t.pallets||'—') + '</td>' +
+      '<td class="' + (t.type==='out'?'qty-neg':'qty-pos') + '">' + (t.type==='out'?'-':'+') + t.packs + '</td>' +
+      '<td style="color:var(--muted)">' + (t.ctns||'—') + '</td>' +
+      '<td style="font-size:12px;color:var(--muted)">' + (t.note||'') + '</td>' +
+      '</tr>';
+  }).join('');
+
+  // Totals row pinned at bottom
+  const totalsRow =
+    '<tr style="background:var(--navy);color:#fff;font-weight:800;position:sticky;bottom:0">' +
+    '<td style="font-size:11px">TOTAL (' + totalRows + ' entries)</td>' +
+    '<td></td><td></td><td></td><td></td><td></td>' +
+    '<td style="color:#f87171;font-size:14px">-' + totalPacks.toLocaleString() + ' pks</td>' +
+    '<td style="color:#fcd34d">' + (totalCtns || '—') + ' ctns</td>' +
+    '<td></td>' +
+    '</tr>';
+
+  document.getElementById('log-tbody').innerHTML = rows + totalsRow;
 }
 
-function undoLast() {
-  // Only undo live picks, not historical log entries
+function clearLogDates() {
+  document.getElementById('log-date-from').value = '';
+  document.getElementById('log-date-to').value = '';
+  renderLog();
+}
+
+function setLogToday() {
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById('log-date-from').value = today;
+  document.getElementById('log-date-to').value = today;
+  renderLog();
+}
+
+function setLogThisWeek() {
+  const now = new Date();
+  const day = now.getDay();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+  document.getElementById('log-date-from').value = monday.toISOString().slice(0,10);
+  document.getElementById('log-date-to').value = now.toISOString().slice(0,10);
+  renderLog();
+}
+
+async function undoLast() {
+  // Find the most recent live pick (newest first)
   const liveTx = txLog.find(t => t.note && t.note.startsWith('Pick:'));
   if (!liveTx) { toast('No live picks to undo', 'err'); return; }
+
+  // Remove from Supabase first
+  if (liveTx.id) {
+    const { error } = await sb.from('picks').delete().eq('id', liveTx.id);
+    if (error) {
+      toast('Error removing from Supabase: ' + error.message, 'err');
+      return;
+    }
+  }
+
+  // Remove from memory
   txLog.splice(txLog.indexOf(liveTx), 1);
   const li = livePickLog.indexOf(liveTx);
   if (li > -1) livePickLog.splice(li, 1);
-  try {
-    localStorage.setItem('usc_livePickLog', JSON.stringify(livePickLog));
-  } catch(e) {}
+
+  // Save updated livePickLog to localStorage as backup
+  try { localStorage.setItem('usc_livePickLog', JSON.stringify(livePickLog)); } catch(e) {}
+
   buildInventory();
   renderAll();
-  toast(`↩ Undid: ${liveTx.sku} (${liveTx.packs} packs)`, 'info');
+  toast('↩ Undid: ' + liveTx.sku + ' (' + liveTx.packs + ' packs)', 'info');
 }
 
 function exportLog() {
-  const rows = [['Time','Channel','SKU','Color','Size','Pallets','Packs','Cartons','Note'],
-    ...txLog.map(t=>[new Date(t.time).toLocaleString(),t.channel,t.sku,t.color,t.size,t.pallets,t.type==='out'?-t.packs:t.packs,t.ctns,t.note])];
-  dlCSV(rows, 'JAK_Log.csv');
+  const ch       = document.getElementById('log-ch').value;
+  const fromVal  = document.getElementById('log-date-from').value;
+  const toVal    = document.getElementById('log-date-to').value;
+  const fromDate = fromVal ? new Date(fromVal + 'T00:00:00') : null;
+  const toDate   = toVal   ? new Date(toVal   + 'T23:59:59') : null;
+  const list = txLog.filter(function(t) {
+    if (ch && t.channel !== ch) return false;
+    if (fromDate && new Date(t.time) < fromDate) return false;
+    if (toDate   && new Date(t.time) > toDate)   return false;
+    return true;
+  });
+  const rows = [['Time','Channel','SKU','Color','Size','Pallets','Packs','Cartons','Note']].concat(
+    list.map(function(t){ return [new Date(t.time).toLocaleString(),t.channel,t.sku,t.color,t.size,t.pallets,t.type==='out'?-t.packs:t.packs,t.ctns||0,t.note]; })
+  );
+  dlCSV(rows, 'USC_Log.csv');
 }
 
 // ══════════════════════════════════════════════════════════════════
