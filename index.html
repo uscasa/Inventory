@@ -536,6 +536,9 @@ async function init() {
   populatePalletSelect();
   renderAll();
 
+  // Track all known Supabase IDs to prevent duplicate entries from polling
+  var seenIds = new Set(livePickLog.filter(function(t){ return t.id; }).map(function(t){ return t.id; }));
+
   // Poll Supabase every 5 seconds for new picks from other team members
   setInterval(async function() {
     try {
@@ -548,26 +551,25 @@ async function init() {
       if (error || !data || !data.length) return;
       var added = false;
       data.forEach(function(r) {
-        var exists = livePickLog.some(function(t) { return t.id === r.id; });
-        if (!exists) {
-          var entry = {
-            id:      r.id,
-            time:    r.created_at,
-            type:    r.type || 'out',
-            sku:     r.sku,
-            color:   r.color,
-            size:    r.size,
-            channel: r.channel,
-            packs:   r.packs,
-            ctns:    r.ctns || 0,
-            pallets: r.pallets,
-            note:    r.note
-          };
-          livePickLog.unshift(entry);
-          txLog.unshift(entry);
-          added = true;
-          toast('🔄 ' + r.sku + ' picked by team', 'info');
-        }
+        if (seenIds.has(r.id)) return;  // already know about this one
+        seenIds.add(r.id);
+        var entry = {
+          id:      r.id,
+          time:    r.created_at,
+          type:    r.type || 'out',
+          sku:     r.sku,
+          color:   r.color,
+          size:    r.size,
+          channel: r.channel,
+          packs:   r.packs,
+          ctns:    r.ctns || 0,
+          pallets: r.pallets,
+          note:    r.note
+        };
+        livePickLog.unshift(entry);
+        txLog.unshift(entry);
+        added = true;
+        toast('🔄 ' + r.sku + ' picked by team', 'info');
       });
       if (added) {
         buildInventory();
@@ -756,7 +758,7 @@ function renderStats() {
     '<div class="stat"><div class="sv">' + inventory.length + '</div><div class="sl">SKUs</div></div>' +
     '<div class="stat green"><div class="sv">' + totalPacks.toLocaleString() + '</div><div class="sl">Packs</div></div>' +
     '<div class="stat blue"><div class="sv">' + totalCtns + '<span style="font-size:12px;font-weight:500;color:var(--muted);margin-left:4px">sealed</span></div><div class="sl">Cartons</div></div>' +
-    '<div class="stat" style="border-left:3px solid var(--yellow)"><div class="sv" style="color:var(--yellow)">' + openCtns + '</div><div class="sl">Open Cartons</div></div>' +
+    '<div class="stat" style="border-left:3px solid var(--yellow)"><div class="sv" style="color:var(--yellow)">' + openCtns + '</div><div class="sl">Open Ctns</div></div>' +
     '<div class="stat red"><div class="sv">' + critCount + '</div><div class="sl">Critical</div></div>' +
     '<div class="stat orange"><div class="sv">' + outCount + '</div><div class="sl">Out of Stock</div></div>' +
     '<div class="stat purple"><div class="sv">' + todayOut + '</div><div class="sl">Today Out</div></div>';
@@ -1151,18 +1153,31 @@ function confirmPick() {
     };
   });
 
-  sb.from('picks').insert(rows).then(function(result) {
+  sb.from('picks').insert(rows).select().then(function(result) {
     if (result.error) {
       console.error('Supabase save error:', result.error);
-      // Fallback: save to localStorage
       try { localStorage.setItem('usc_livePickLog', JSON.stringify(livePickLog)); } catch(e) {}
       toast('⚠️ Saved locally (offline)', 'err');
     } else {
-      // Update IDs from Supabase response
-      if (result.data) {
-        result.data.forEach(function(r, i) {
-          if (livePickLog[i]) livePickLog[i].id = r.id;
+      // Store Supabase IDs back into livePickLog entries so undo can delete them
+      if (result.data && result.data.length) {
+        result.data.forEach(function(r) {
+          // Mark as seen immediately so poll never adds it as a "team pick"
+          seenIds.add(r.id);
+          for (var i = 0; i < livePickLog.length; i++) {
+            if (!livePickLog[i].id && livePickLog[i].sku === r.sku && livePickLog[i].packs === r.packs) {
+              livePickLog[i].id = r.id;
+              for (var j = 0; j < txLog.length; j++) {
+                if (txLog[j].sku === r.sku && txLog[j].packs === r.packs && !txLog[j].id) {
+                  txLog[j].id = r.id;
+                  break;
+                }
+              }
+              break;
+            }
+          }
         });
+        try { localStorage.setItem('usc_livePickLog', JSON.stringify(livePickLog)); } catch(e) {}
       }
     }
   });
@@ -1372,17 +1387,29 @@ function setLogThisWeek() {
 }
 
 async function undoLast() {
-  // Find the most recent live pick (newest first)
+  // Find the most recent live pick (newest first in txLog)
   const liveTx = txLog.find(t => t.note && t.note.startsWith('Pick:'));
   if (!liveTx) { toast('No live picks to undo', 'err'); return; }
 
-  // Remove from Supabase first
-  if (liveTx.id) {
-    const { error } = await sb.from('picks').delete().eq('id', liveTx.id);
-    if (error) {
-      toast('Error removing from Supabase: ' + error.message, 'err');
-      return;
+  // Delete from Supabase — try by ID first, fall back to matching by sku+time
+  try {
+    if (liveTx.id) {
+      const { error } = await sb.from('picks').delete().eq('id', liveTx.id);
+      if (error) throw error;
+    } else {
+      // No ID saved locally — match by sku, packs, channel and created_at approximation
+      const isoTime = new Date(liveTx.time).toISOString();
+      const { error } = await sb.from('picks').delete()
+        .eq('sku', liveTx.sku)
+        .eq('packs', liveTx.packs)
+        .eq('channel', liveTx.channel)
+        .gte('created_at', new Date(new Date(liveTx.time) - 5000).toISOString())
+        .lte('created_at', new Date(new Date(liveTx.time).getTime() + 5000).toISOString());
+      if (error) throw error;
     }
+  } catch(e) {
+    toast('Error removing from Supabase: ' + e.message, 'err');
+    return;
   }
 
   // Remove from memory
@@ -1390,7 +1417,6 @@ async function undoLast() {
   const li = livePickLog.indexOf(liveTx);
   if (li > -1) livePickLog.splice(li, 1);
 
-  // Save updated livePickLog to localStorage as backup
   try { localStorage.setItem('usc_livePickLog', JSON.stringify(livePickLog)); } catch(e) {}
 
   buildInventory();
