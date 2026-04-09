@@ -303,8 +303,10 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     <div>
       <div class="pick-builder">
         <h3>📦 Build Pick Order</h3>
-        <div style="margin-bottom:12px">
-          <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Sales Channel</div>
+
+        <!-- Channel selector -->
+        <div style="margin-bottom:14px">
+          <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Channel</div>
           <div class="ch-pills">
             <button class="ch-pill amazon active" data-ch="Amazon FBA" onclick="setChannel(this)">🛒 Amazon FBA</button>
             <button class="ch-pill ebay" data-ch="eBay" onclick="setChannel(this)">🔵 eBay</button>
@@ -313,25 +315,103 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             <button class="ch-pill wholesale" data-ch="Wholesale" onclick="setChannel(this)">🏢 Wholesale</button>
           </div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-          <div class="field" style="margin:0">
-            <label>SKU</label>
-            <input list="sku-dl" id="pick-sku" placeholder="Search SKU...">
-            <datalist id="sku-dl"></datalist>
-          </div>
-          <div class="field" style="margin:0">
-            <label id="pick-qty-label">Qty (packs)</label>
-            <div style="display:flex;gap:6px;align-items:center">
-              <input type="number" id="pick-qty" value="1" min="1" style="flex:1;height:36px;border:1px solid var(--border);border-radius:8px;padding:0 12px;font-size:13px;outline:none">
-              <button id="qty-mode-btn" onclick="toggleQtyMode()" style="height:36px;padding:0 10px;border-radius:8px;border:1.5px solid var(--border);background:var(--white);font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;white-space:nowrap" title="Switch between packs and cartons">pks</button>
-            </div>
-          </div>
-        </div>
-        <button class="btn btn-blue" style="width:100%;margin-bottom:14px" onclick="addPickItem()">+ Add to Queue</button>
 
-        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Bulk Paste (SKU, qty per line)</div>
-        <textarea id="pick-bulk" style="width:100%;height:70px;border:1px solid var(--border);border-radius:8px;padding:8px;font-size:12px;resize:vertical;outline:none" placeholder="HB-C-TWL-400-SGY-46, 48&#10;NM-TWL-500-A-71, 2ctns&#10;GM-TWL-400-W-71, 3 cartons"></textarea>
-        <button class="btn btn-gray btn-sm" style="width:100%;margin-top:6px;margin-bottom:14px" onclick="parseBulk()">Parse Bulk</button>
+        <!-- SKU search -->
+        <div class="field">
+          <label>Search SKU</label>
+          <input list="sku-dl" id="pick-sku" placeholder="Type or paste SKU..." autocomplete="off"
+            oninput="onSkuInput()" style="font-size:13px;height:40px">
+          <datalist id="sku-dl"></datalist>
+        </div>
+
+        <!-- SKU info + qty panel — shown after SKU entered -->
+        <div id="sku-picker-panel" style="display:none;background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px">
+          <div id="sku-picker-info" style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:12px"></div>
+
+          <!-- Pack or Carton toggle -->
+          <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">What are you picking?</div>
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <button id="mode-pks-btn" onclick="setPickMode('pks')"
+              style="flex:1;height:44px;border-radius:10px;border:2px solid var(--blue);background:var(--blue);color:#fff;font-size:13px;font-weight:700;cursor:pointer">
+              📦 Packs
+            </button>
+            <button id="mode-ctns-btn" onclick="setPickMode('ctns')"
+              style="flex:1;height:44px;border-radius:10px;border:2px solid var(--border);background:var(--white);color:var(--muted);font-size:13px;font-weight:700;cursor:pointer">
+              🗃️ Cartons
+            </button>
+          </div>
+
+          <!-- Qty input -->
+          <div style="display:flex;gap:8px;align-items:flex-end">
+            <div style="flex:1">
+              <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px" id="qty-input-label">Qty (packs)</div>
+              <input type="number" id="pick-qty" value="1" min="1"
+                style="width:100%;height:44px;border:1.5px solid var(--blue);border-radius:10px;padding:0 14px;font-size:18px;font-weight:700;outline:none;text-align:center"
+                oninput="updateQtyPreview()">
+            </div>
+            <div id="qty-preview" style="font-size:12px;color:var(--muted);padding-bottom:12px;white-space:nowrap"></div>
+          </div>
+
+          <!-- Available stock hint -->
+          <div id="stock-hint" style="font-size:11px;margin-top:8px;padding:6px 10px;border-radius:6px;background:#f0fdf4;color:var(--green)"></div>
+
+          <button class="btn btn-blue" style="width:100%;margin-top:12px;height:44px;font-size:14px" onclick="addPickItem()">
+            + Add to Queue
+          </button>
+        </div>
+
+        <!-- Bulk CSV Upload -->
+        <details style="margin-bottom:12px" id="bulk-details">
+          <summary style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;cursor:pointer;user-select:none;padding:4px 0">
+            📂 Bulk Upload — CSV file
+          </summary>
+          <div style="margin-top:10px">
+
+            <!-- Download template button -->
+            <button class="btn btn-gray btn-sm" style="width:100%;margin-bottom:10px" onclick="downloadCSVTemplate()">
+              ⬇ Download CSV Template
+            </button>
+
+            <!-- Upload area -->
+            <label for="csv-upload" id="csv-drop-zone"
+              style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+                     border:2px dashed var(--border);border-radius:10px;padding:20px;cursor:pointer;
+                     background:#f8fafc;transition:all .15s;text-align:center">
+              <span style="font-size:24px">📄</span>
+              <span style="font-size:13px;font-weight:600;color:var(--navy)">Click to upload CSV</span>
+              <span style="font-size:11px;color:var(--muted)">Supports Amazon FBA shipment plan CSV or our template</span>
+              <input type="file" id="csv-upload" accept=".csv" style="display:none" onchange="handleCSVUpload(event)">
+            </label>
+
+            <!-- Preview table -->
+            <div id="csv-preview" style="display:none;margin-top:10px">
+              <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">
+                Preview — <span id="csv-count"></span>
+              </div>
+              <div style="max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;overflow:hidden">
+                <table style="width:100%;border-collapse:collapse;font-size:12px">
+                  <thead>
+                    <tr style="background:var(--navy);color:#fff">
+                      <th style="padding:7px 10px;text-align:left;font-size:10px">SKU</th>
+                      <th style="padding:7px 8px;text-align:center;font-size:10px">BOX QTY</th>
+                      <th style="padding:7px 8px;text-align:center;font-size:10px">PACK QTY</th>
+                      <th style="padding:7px 8px;text-align:center;font-size:10px">TOTAL PKS</th>
+                      <th style="padding:7px 8px;text-align:center;font-size:10px">STATUS</th>
+                    </tr>
+                  </thead>
+                  <tbody id="csv-preview-rows"></tbody>
+                </table>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:8px">
+                <button class="btn btn-green" style="flex:1" onclick="addCSVToQueue()">
+                  ✅ Add All to Queue
+                </button>
+                <button class="btn btn-gray btn-sm" onclick="clearCSV()">✕ Clear</button>
+              </div>
+            </div>
+
+          </div>
+        </details>
 
         <div id="queue-wrap" style="display:none">
           <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Queue</div>
@@ -875,56 +955,190 @@ let qtyModeCartons = false;
 
 function toggleQtyMode() {
   qtyModeCartons = !qtyModeCartons;
-  const btn = document.getElementById('qty-mode-btn');
-  const lbl = document.getElementById('pick-qty-label');
+}
+
+function setPickMode(mode) {
+  qtyModeCartons = (mode === 'ctns');
+  const pkBtn = document.getElementById('mode-pks-btn');
+  const ctnBtn = document.getElementById('mode-ctns-btn');
   if (qtyModeCartons) {
-    btn.textContent = 'ctns';
-    btn.style.borderColor = 'var(--blue)';
-    btn.style.color = 'var(--blue)';
-    btn.style.background = '#dbeafe';
-    lbl.textContent = 'Qty (cartons)';
+    pkBtn.style.background = 'var(--white)';
+    pkBtn.style.borderColor = 'var(--border)';
+    pkBtn.style.color = 'var(--muted)';
+    ctnBtn.style.background = 'var(--blue)';
+    ctnBtn.style.borderColor = 'var(--blue)';
+    ctnBtn.style.color = '#fff';
+    document.getElementById('qty-input-label').textContent = 'Qty (cartons)';
   } else {
-    btn.textContent = 'pks';
-    btn.style.borderColor = 'var(--border)';
-    btn.style.color = 'var(--muted)';
-    btn.style.background = 'var(--white)';
-    lbl.textContent = 'Qty (packs)';
+    pkBtn.style.background = 'var(--blue)';
+    pkBtn.style.borderColor = 'var(--blue)';
+    pkBtn.style.color = '#fff';
+    ctnBtn.style.background = 'var(--white)';
+    ctnBtn.style.borderColor = 'var(--border)';
+    ctnBtn.style.color = 'var(--muted)';
+    document.getElementById('qty-input-label').textContent = 'Qty (packs)';
+  }
+  updateQtyPreview();
+}
+
+function onSkuInput() {
+  const sku = document.getElementById('pick-sku').value.trim().toUpperCase();
+  const inv = inventory.find(function(s){ return s.sku === sku; });
+  const panel = document.getElementById('sku-picker-panel');
+  if (!inv) { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+
+  // Show SKU info
+  document.getElementById('sku-picker-info').innerHTML =
+    '<span style="color:var(--navy)">' + inv.sku + '</span>' +
+    '  <span style="color:var(--muted);font-weight:400">' + inv.color + ' · ' + inv.size + ' · PPC: ' + inv.ppc + '</span>';
+
+  updateQtyPreview();
+}
+
+function updateQtyPreview() {
+  const sku = document.getElementById('pick-sku').value.trim().toUpperCase();
+  const inv = inventory.find(function(s){ return s.sku === sku; });
+  if (!inv) return;
+  const qty = parseInt(document.getElementById('pick-qty').value) || 1;
+  const totalPacks = qtyModeCartons ? qty * inv.ppc : qty;
+  const ctns = Math.floor(totalPacks / inv.ppc);
+  const loose = totalPacks % inv.ppc;
+
+  // Preview
+  let preview = '';
+  if (qtyModeCartons) {
+    preview = '= ' + totalPacks + ' packs';
+  } else {
+    preview = ctns > 0 ? '= ' + ctns + ' ctn' + (ctns!==1?'s':'') + (loose?' + '+loose+' pks':'') : '';
+  }
+  document.getElementById('qty-preview').textContent = preview;
+
+  // Stock hint
+  const hint = document.getElementById('stock-hint');
+  const available = inv.packs;
+  if (totalPacks > available) {
+    hint.style.background = '#fef2f2';
+    hint.style.color = 'var(--red)';
+    hint.textContent = '⚠️ Only ' + available + ' packs available — will be capped at ' + available;
+  } else {
+    hint.style.background = '#f0fdf4';
+    hint.style.color = 'var(--green)';
+    hint.textContent = '✅ ' + available + ' packs available · ' + inv.ctns + ' sealed cartons';
   }
 }
 
 function addPickItem() {
-  const sku = document.getElementById('pick-sku').value.trim();
+  const skuRaw = document.getElementById('pick-sku').value.trim().toUpperCase();
   const rawQty = parseInt(document.getElementById('pick-qty').value) || 1;
-  if (!sku) { toast('Enter a SKU', 'err'); return; }
-  const inv = inventory.find(s => s.sku === sku);
-  if (!inv) { toast('SKU not found', 'err'); return; }
-  // Convert cartons to packs if in carton mode
+  if (!skuRaw) { toast('Enter a SKU', 'err'); return; }
+  const inv = inventory.find(function(s){ return s.sku === skuRaw; });
+  if (!inv) { toast('SKU not found: ' + skuRaw, 'err'); return; }
+
   const qty = qtyModeCartons ? rawQty * inv.ppc : rawQty;
-  const modeLabel = qtyModeCartons ? rawQty + ' ctn' + (rawQty !== 1 ? 's' : '') + ' (' + qty + ' pks)' : null;
-  pickQueue.push({sku, qty, color:inv.color, size:inv.size, ppc:inv.ppc, modeLabel});
+  const finalQty = Math.min(qty, inv.packs);
+  if (finalQty === 0) { toast(skuRaw + ' is out of stock', 'err'); return; }
+
+  const modeLabel = qtyModeCartons
+    ? rawQty + ' ctn' + (rawQty!==1?'s':'') + ' (' + finalQty + ' pks)'
+    : finalQty + ' pks';
+
+  pickQueue.push({sku:skuRaw, qty:finalQty, color:inv.color, size:inv.size, ppc:inv.ppc, modeLabel});
+
+  // Reset UI
   document.getElementById('pick-sku').value = '';
   document.getElementById('pick-qty').value = '1';
+  document.getElementById('sku-picker-panel').style.display = 'none';
+  document.getElementById('stock-hint').textContent = '';
+  // Reset to packs mode
+  qtyModeCartons = false;
+  setPickMode('pks');
   renderQueue();
+  document.getElementById('pick-sku').focus();
+}
+
+function parseLine(line) {
+  // Returns {sku, qty, modeLabel} or null
+  line = line.trim();
+  if (!line) return null;
+  // Detect separator: tab (Amazon format) or comma
+  var sep = line.includes('\t') ? '\t' : ',';
+  var parts = line.split(sep).map(function(s){ return s.trim(); });
+  if (parts.length < 2) return null;
+  var sku = parts[0].toUpperCase().trim();
+  // Skip header rows from Amazon
+  if (sku === 'SKU' || sku === 'MSKU' || sku === 'MERCHANT SKU') return null;
+  var rawStr = parts[1].toLowerCase().trim();
+  // ctn/carton suffix
+  var isCtns = /ctn|carton/.test(rawStr);
+  var rawQty = parseInt(rawStr) || 0;
+  if (!rawQty) return null;
+  var inv = inventory.find(function(s){ return s.sku === sku; });
+  if (!inv) return {sku:sku, qty:0, notFound:true};
+  var qty = isCtns ? rawQty * inv.ppc : rawQty;
+  var finalQty = Math.min(qty, inv.packs);
+  var modeLabel = isCtns
+    ? rawQty + 'ctn (' + finalQty + 'pks)'
+    : finalQty + ' pks';
+  if (finalQty < qty) modeLabel += ' ⚠️';
+  return {sku:sku, qty:finalQty, color:inv.color, size:inv.size, ppc:inv.ppc,
+          modeLabel:modeLabel, inv:inv, outOfStock:inv.packs===0};
+}
+
+function previewBulk() {
+  var raw = document.getElementById('pick-bulk').value.trim();
+  var preview = document.getElementById('bulk-preview');
+  if (!raw) { preview.style.display='none'; return; }
+  var lines = raw.split('\n');
+  var rows = [];
+  lines.forEach(function(line){
+    var r = parseLine(line);
+    if (!r) return;
+    if (r.notFound) {
+      rows.push('<div style="color:var(--red);padding:2px 0">❌ ' + r.sku + ' — not found</div>');
+    } else if (r.outOfStock) {
+      rows.push('<div style="color:var(--muted);padding:2px 0">⚪ ' + r.sku + ' — out of stock</div>');
+    } else {
+      rows.push('<div style="padding:2px 0"><span style="font-weight:700">' + r.sku + '</span> <span style="color:var(--muted)">' + r.color + ' · ' + r.size + '</span> <span style="color:var(--blue);font-weight:700;float:right">' + r.modeLabel + '</span></div>');
+    }
+  });
+  if (rows.length) {
+    preview.innerHTML = rows.join('');
+    preview.style.display = 'block';
+  } else {
+    preview.style.display = 'none';
+  }
 }
 
 function parseBulk() {
-  const lines = document.getElementById('pick-bulk').value.trim().split('\n');
-  lines.forEach(line => {
-    const parts = line.split(',').map(s=>s.trim());
-    if (parts.length < 2) return;
-    const sku = parts[0];
-    const rawStr = parts[1].toLowerCase();
-    const isCtns = rawStr.includes('ctn') || rawStr.includes('carton');
-    const rawQty = parseInt(rawStr) || 0;
-    if (!sku || !rawQty) return;
-    const inv = inventory.find(s => s.sku === sku);
-    if (!inv) return;
-    const qty = isCtns ? rawQty * inv.ppc : rawQty;
-    const modeLabel = isCtns ? rawQty + ' ctn' + (rawQty !== 1 ? 's' : '') + ' (' + qty + ' pks)' : null;
-    pickQueue.push({sku, qty, color:inv.color, size:inv.size, ppc:inv.ppc, modeLabel});
+  var raw = document.getElementById('pick-bulk').value.trim();
+  if (!raw) return;
+  var lines = raw.split('\n');
+  var added = 0, skipped = [];
+
+  lines.forEach(function(line) {
+    var r = parseLine(line);
+    if (!r) return;
+    if (r.notFound) { skipped.push(r.sku + ' (not found)'); return; }
+    if (r.outOfStock || r.qty === 0) { skipped.push(r.sku + ' (out of stock)'); return; }
+    pickQueue.push({sku:r.sku, qty:r.qty, color:r.color, size:r.size, ppc:r.ppc, modeLabel:r.modeLabel});
+    added++;
   });
+
   document.getElementById('pick-bulk').value = '';
+  document.getElementById('bulk-preview').style.display = 'none';
   renderQueue();
+
+  // Open bulk details and show queue
+  if (added > 0) {
+    if (skipped.length) {
+      toast('Added ' + added + ' SKUs. Skipped ' + skipped.length + ': ' + skipped.slice(0,3).join(', ') + (skipped.length>3?'...':''), 'info');
+    } else {
+      toast('✅ Added ' + added + ' SKU' + (added!==1?'s':'') + ' to queue', 'ok');
+    }
+  } else {
+    toast('No valid SKUs found', 'err');
+  }
 }
 
 function renderQueue() {
@@ -954,9 +1168,16 @@ function generatePlan() {
   pickQueue.forEach(item => {
     let needed = item.qty;
     const inv = inventory.find(s => s.sku === item.sku);
-    if (!inv || inv.packs < needed) {
-      steps.push({type:'warn', label:`⚠️ Insufficient stock`, desc:`${item.sku}: need ${needed} packs, only ${inv?.packs||0} available`});
+    if (!inv || inv.packs === 0) {
+      steps.push({type:'warn', label:'⚠️ Out of Stock', desc:item.sku + ': 0 packs available — skipped'});
       return;
+    }
+    // If requested more than available, cap at what's there and warn
+    let cappedNote = '';
+    if (inv.packs < needed) {
+      cappedNote = ' ⚠️ Only ' + inv.packs + ' available (requested ' + needed + ')';
+      needed = inv.packs;
+      item.qty = needed; // update queue item so confirm deducts correct amount
     }
 
     // Strategy depends on channel
@@ -978,20 +1199,26 @@ function generatePlan() {
         totalCtns += s.ctns;
       });
     } else if (ch === 'Amazon FBA') {
-      // FBA: full cartons only, grouped by pallet
+      // FBA: full cartons + loose remainder
       const ctnsNeeded = Math.floor(needed / inv.ppc);
       const remainder = needed % inv.ppc;
-      const sources = findCartonSources(palletCopy, item.sku, ctnsNeeded || 1);
-      sources.forEach(s => {
-        steps.push({type:'fba', label:`Pallet ${s.pallet}`, desc:`${item.sku} · ${item.color} · ${item.size} — ${s.ctns} sealed carton${s.ctns!==1?'s':''} → FBA shipment`});
-        totalPacks += s.ctns * inv.ppc;
-        totalCtns += s.ctns;
-      });
-      if (remainder > 0 && ctnsNeeded === 0) {
+
+      // Only pull sealed cartons if we actually need full ones
+      if (ctnsNeeded > 0) {
+        const sources = findCartonSources(palletCopy, item.sku, ctnsNeeded);
+        sources.forEach(s => {
+          steps.push({type:'fba', label:'Pallet ' + s.pallet, desc:item.sku + ' · ' + item.color + ' · ' + item.size + ' — ' + s.ctns + ' sealed carton' + (s.ctns!==1?'s':'') + ' → FBA shipment' + cappedNote});
+          totalCtns += s.ctns;
+          cappedNote = '';
+        });
+      }
+
+      // Pull remainder (or full qty if less than ppc) from open cartons
+      if (remainder > 0) {
         const openSrc = findPalletSources(palletCopy, item.sku, remainder, true);
         openSrc.forEach(s => {
-          steps.push({type:'open-ctn', label:`Pallet ${s.pallet} (open)`, desc:`${item.sku} — pick ${s.packs} loose packs from open carton`});
-          totalPacks += s.packs;
+          steps.push({type:'open-ctn', label:'Pallet ' + s.pallet + ' (open)', desc:item.sku + ' — pick ' + s.packs + ' loose packs from open carton' + cappedNote});
+          cappedNote = '';
         });
       }
     } else {
@@ -1005,6 +1232,14 @@ function generatePlan() {
       });
     }
   });
+
+  // Calculate totalPacks directly from queue quantities (not from step accumulation)
+  // This ensures the total matches exactly what was requested, not rounded carton sizes
+  totalPacks = pickQueue.reduce(function(sum, item) {
+    var inv2 = inventory.find(function(s){ return s.sku === item.sku; });
+    var avail = inv2 ? inv2.packs : 0;
+    return sum + Math.min(item.qty, avail);
+  }, 0);
 
   currentPlan = {steps, totalPacks, totalCtns, channel:ch, queue:[...pickQueue]};
   document.getElementById('plan-output').style.display = 'block';
@@ -1736,228 +1971,168 @@ function toast(msg, type='ok') {
 // ══════════════════════════════════════════════════════════════
 function downloadPickPlanPDF() {
   if (!currentPlan) { toast('Generate a plan first', 'err'); return; }
-  const p = currentPlan;
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit:'pt', format:'letter' });
   const W = doc.internal.pageSize.getWidth();
-  const ML = 40, MR = 40, pageW = W - ML - MR;
+  const H = doc.internal.pageSize.getHeight();
+  const ML = 36, MR = 36, PW = W - ML - MR;
   const now = new Date();
-  const channel = p.channel;
+  const p = currentPlan;
+  const ch = p.channel;
   const orderId = 'PP-' + now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0') + '-' + String(now.getHours()).padStart(2,'0') + String(now.getMinutes()).padStart(2,'0');
   const dateStr = now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
   const timeStr = now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
-
-  const CH_COLOR = {
-    'Amazon FBA':  [234,88,12],
-    'eBay':        [37,99,235],
-    'TikTok Shop': [219,39,119],
-    'Sample':      [124,58,237],
-    'Wholesale':   [13,148,136],
-  };
-  const STEP_BG = {
-    'fba':       [239,246,255],
-    'open-ctn':  [254,252,232],
-    'sample':    [245,243,255],
-    'wholesale': [240,253,250],
-    'warn':      [254,242,242],
-  };
-  const STEP_ACCENT = {
-    'fba':       [37,99,235],
-    'open-ctn':  [180,83,9],
-    'sample':    [124,58,237],
-    'wholesale': [13,148,136],
-    'warn':      [220,38,38],
-  };
-
-  const chCol = CH_COLOR[channel] || [37,99,235];
+  const CH_COL = {'Amazon FBA':[234,88,12],'eBay':[37,99,235],'TikTok Shop':[219,39,119],'Sample':[124,58,237],'Wholesale':[13,148,136]};
+  const STEP_BG = {'fba':[239,246,255],'open-ctn':[254,252,232],'sample':[245,243,255],'wholesale':[240,253,250],'warn':[254,242,242]};
+  const STEP_ACC = {'fba':[37,99,235],'open-ctn':[180,83,9],'sample':[124,58,237],'wholesale':[13,148,136],'warn':[220,38,38]};
+  const chCol = CH_COL[ch] || [37,99,235];
+  const NAVY=[26,39,68],LGRAY=[248,250,252],BORDER=[226,232,240],MUTED=[100,116,139];
   let y = ML;
 
-  // ── HEADER BANNER ─────────────────────────────────────────
-  doc.setFillColor(26,39,68);
-  doc.rect(ML, y, pageW, 36, 'F');
-  doc.setFont('helvetica','bold');
-  doc.setFontSize(16);
-  doc.setTextColor(255,255,255);
-  doc.text('US CASA', ML+14, y+23);
-  doc.text('PICK PLAN', ML+pageW-14, y+23, {align:'right'});
-  y += 36;
+  // HEADER
+  doc.setFillColor(...NAVY); doc.rect(ML,y,PW,38,'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(17); doc.setTextColor(255,255,255);
+  doc.text('US CASA', ML+14, y+25);
+  doc.text('PICK PLAN', ML+PW-14, y+25, {align:'right'});
+  y += 38;
 
   // Channel stripe
-  doc.setFillColor(...chCol);
-  doc.rect(ML, y, pageW, 16, 'F');
-  doc.setFont('helvetica','bold');
-  doc.setFontSize(8);
-  doc.setTextColor(255,255,255);
-  doc.text(channel, ML+12, y+10.5);
-  y += 16 + 10;
+  doc.setFillColor(...chCol); doc.rect(ML,y,PW,16,'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(255,255,255);
+  doc.text(ch, ML+12, y+11);
+  y += 26;
 
-  // ── META ROW ──────────────────────────────────────────────
-  const metaH = 38, colW = pageW/5;
-  doc.setFillColor(248,250,252);
-  doc.rect(ML, y, pageW, metaH, 'F');
-  doc.setDrawColor(226,232,240);
-  doc.rect(ML, y, pageW, metaH);
-  const metas = [
-    ['ORDER ID', orderId],
-    ['DATE', dateStr],
-    ['TIME', timeStr],
-    ['PICKER', ''],
-    ['VERIFIED BY', ''],
-  ];
-  metas.forEach(([label, val], i) => {
-    const x = ML + i*colW;
-    if (i > 0) { doc.setDrawColor(226,232,240); doc.line(x, y, x, y+metaH); }
-    doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(100,116,139);
-    doc.text(label, x+8, y+12);
-    doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(26,39,68);
-    if (val) {
-      doc.text(val, x+8, y+27);
-    } else {
-      doc.setDrawColor(200,210,220);
-      doc.line(x+8, y+28, x+colW-8, y+28);
-    }
+  // META ROW
+  const metaH=40, mW=PW/5;
+  doc.setFillColor(...LGRAY); doc.rect(ML,y,PW,metaH,'F');
+  doc.setDrawColor(...BORDER); doc.rect(ML,y,PW,metaH);
+  [['ORDER ID',orderId],['DATE',dateStr],['TIME',timeStr],['PICKER',''],['VERIFIED BY','']].forEach(function(pair,i){
+    const lbl=pair[0],val=pair[1],x=ML+i*mW;
+    if(i>0){doc.setDrawColor(...BORDER);doc.line(x,y,x,y+metaH);}
+    doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...MUTED);doc.text(lbl,x+8,y+13);
+    doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(...NAVY);
+    if(val){doc.text(val,x+8,y+29);}else{doc.setDrawColor(...BORDER);doc.line(x+8,y+31,x+mW-8,y+31);}
   });
-  y += metaH + 10;
+  y += metaH+10;
 
-  // ── STATS ROW ─────────────────────────────────────────────
-  const stats = [
-    [String(p.queue.length), 'SKUs', [37,99,235]],
-    [String(p.totalPacks),   'Total Packs', [22,163,74]],
-    [String(p.totalCtns),    'Cartons to Open', [234,88,12]],
-    [String(p.steps.filter(s=>s.type!=='warn').length), 'Pick Steps', [124,58,237]],
-  ];
-  const statW = pageW/4;
-  doc.setFillColor(255,255,255);
-  doc.rect(ML, y, pageW, 46, 'F');
-  doc.setDrawColor(226,232,240);
-  doc.rect(ML, y, pageW, 46);
-  stats.forEach(([val,label,col],i) => {
-    const x = ML + i*statW + statW/2;
-    if (i>0) { doc.setDrawColor(226,232,240); doc.line(ML+i*statW, y, ML+i*statW, y+46); }
-    doc.setFont('helvetica','bold'); doc.setFontSize(20); doc.setTextColor(...col);
-    doc.text(val, x, y+27, {align:'center'});
-    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(100,116,139);
-    doc.text(label, x, y+40, {align:'center'});
+  // STATS ROW
+  const nSteps=p.steps.filter(function(s){return s.type!=='warn';}).length;
+  const stats4=[[String(p.queue.length),'SKUs',[37,99,235]],[String(p.totalPacks),'Total Packs',[22,163,74]],[String(p.totalCtns),'Cartons to Open',[234,88,12]],[String(nSteps),'Pick Steps',[124,58,237]]];
+  const sW=PW/4;
+  doc.setFillColor(255,255,255); doc.rect(ML,y,PW,48,'F');
+  doc.setDrawColor(...BORDER); doc.rect(ML,y,PW,48);
+  stats4.forEach(function(s,i){
+    const val=s[0],lbl=s[1],col=s[2],x=ML+i*sW+sW/2;
+    if(i>0){doc.setDrawColor(...BORDER);doc.line(ML+i*sW,y,ML+i*sW,y+48);}
+    doc.setFont('helvetica','bold');doc.setFontSize(20);doc.setTextColor(...col);doc.text(val,x,y+28,{align:'center'});
+    doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...MUTED);doc.text(lbl,x,y+42,{align:'center'});
   });
-  y += 46 + 12;
+  y += 58;
 
-  // ── ORDER ITEMS TABLE ────────────────────────────────────
-  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(100,116,139);
-  doc.text('ORDER ITEMS', ML, y);
-  y += 5;
-
-  const orderRows = p.queue.map((item, i) => {
-    const ppc = item.ppc || 1;
-    const full = Math.floor(item.qty / ppc);
-    const loose = item.qty % ppc;
-    let est = full && loose ? `${full}c + ${loose}pk` : full ? `${full} ctn${full!==1?'s':''}` : `${loose} loose`;
-    return [String(i+1), item.sku, item.color||'', item.size||'', String(item.qty), est];
-  });
-
+  // ORDER ITEMS
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(...MUTED);doc.text('ORDER ITEMS',ML,y);y+=5;
   doc.autoTable({
-    startY: y,
-    margin: {left: ML, right: MR},
-    head: [['#','SKU','Color','Size','Qty (pks)','Est. Ctns']],
-    body: orderRows,
-    theme: 'plain',
-    styles: { fontSize:9, cellPadding:5, valign:'middle', overflow:'linebreak' },
-    headStyles: { fillColor:[26,39,68], textColor:255, fontStyle:'bold', fontSize:8 },
-    columnStyles: {
-      0: { cellWidth:20, halign:'center', textColor:[100,116,139] },
-      1: { cellWidth:pageW*0.34, fontStyle:'bold' },
-      2: { cellWidth:pageW*0.17 },
-      3: { cellWidth:pageW*0.13, textColor:[100,116,139] },
-      4: { cellWidth:50, halign:'center', fontStyle:'bold', textColor:[22,163,74] },
-      5: { cellWidth:60, halign:'center', textColor:[100,116,139] },
+    startY:y,margin:{left:ML,right:MR},
+    head:[['#','SKU','Color','Size','Qty (pks)','Ctns','Type']],
+    body:p.queue.map(function(item,i){
+      var ppc=item.ppc||1,qty=item.qty,full=Math.floor(qty/ppc),loose=qty%ppc;
+      var ctnStr=full&&loose?full+'c+'+loose+'pk':full?full+' ctn'+(full!==1?'s':''):loose+' loose';
+      var typ=full&&loose?'Mixed':full?'Sealed':'Open';
+      return[String(i+1),item.sku,item.color||'',item.size||'',String(qty),ctnStr,typ];
+    }),
+    theme:'plain',
+    styles:{fontSize:9,cellPadding:5,valign:'middle',overflow:'linebreak'},
+    headStyles:{fillColor:[26,39,68],textColor:255,fontStyle:'bold',fontSize:8},
+    columnStyles:{
+      0:{cellWidth:22,halign:'center',textColor:[100,116,139]},
+      1:{cellWidth:PW*0.30,fontStyle:'bold'},
+      2:{cellWidth:PW*0.16},
+      3:{cellWidth:PW*0.12,halign:'center'},
+      4:{cellWidth:50,halign:'center',fontStyle:'bold',textColor:[22,163,74]},
+      5:{cellWidth:65,halign:'center',textColor:[100,116,139]},
+      6:{cellWidth:48,halign:'center',fontStyle:'bold'},
     },
-    alternateRowStyles: { fillColor:[248,250,252] },
-    tableLineColor: [226,232,240],
-    tableLineWidth: 0.5,
-  });
-  y = doc.lastAutoTable.finalY + 12;
-
-  // ── PICK INSTRUCTIONS TABLE ──────────────────────────────
-  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(100,116,139);
-  doc.text('PICK INSTRUCTIONS', ML, y);
-  y += 5;
-
-  let stepNum = 0;
-  const pickRows = [];
-  const pickBodyStyles = [];
-
-  p.steps.forEach((s, i) => {
-    const stype = s.type;
-    const bg = STEP_BG[stype] || [248,250,252];
-    const accent = STEP_ACCENT[stype] || [37,99,235];
-    if (stype === 'warn') {
-      pickRows.push(['⚠', '—', s.desc, 'INSUFFICIENT STOCK', '']);
-      pickBodyStyles.push({ rowIndex: pickRows.length-1, bg:[254,242,242], accent:[220,38,38] });
-      return;
+    alternateRowStyles:{fillColor:[248,250,252]},
+    tableLineColor:[226,232,240],tableLineWidth:0.5,
+    didParseCell:function(data){
+      if(data.section==='body'&&data.column.index===6){
+        var v=data.cell.raw;
+        if(v==='Open')data.cell.styles.textColor=[180,83,9];
+        else if(v==='Sealed')data.cell.styles.textColor=[37,99,235];
+        else data.cell.styles.textColor=[124,58,237];
+      }
+      if(data.section==='body'&&data.column.index===4){
+        var item=p.queue[data.row.index];
+        if(item&&item.capped)data.cell.styles.textColor=[220,38,38];
+      }
     }
+  });
+  y=doc.lastAutoTable.finalY+12;
+
+  // PICK INSTRUCTIONS
+  if(y>H-200){doc.addPage();y=ML;}
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(...MUTED);doc.text('PICK INSTRUCTIONS',ML,y);y+=5;
+  var stepNum=0;
+  var pickBody=[];
+  var pickStyles=[];
+  p.steps.forEach(function(s){
+    var bg=STEP_BG[s.type]||[248,250,252];
+    var acc=STEP_ACC[s.type]||[37,99,235];
+    if(s.type==='warn'){pickBody.push(['!','',s.desc,'INSUFFICIENT STOCK','']);pickStyles.push({ri:pickBody.length-1,bg:[254,242,242],acc:[220,38,38]});return;}
     stepNum++;
-    let action = 'Pull SEALED carton(s)';
-    if (s.label.toLowerCase().includes('open') || s.desc.toLowerCase().includes('open carton')) action = 'Pull from OPEN carton';
-    else if (s.desc.toLowerCase().includes('loose')) action = 'Pull loose packs';
-    else if (stype === 'sample') action = 'Pick for sample';
-    pickRows.push([String(stepNum), s.label, s.desc, action, '□']);
-    pickBodyStyles.push({ rowIndex: pickRows.length-1, bg, accent });
+    var action='Pull SEALED carton(s)';
+    if(s.label.toLowerCase().indexOf('open')>-1||s.desc.toLowerCase().indexOf('open carton')>-1)action='Pick from OPEN carton';
+    else if(s.desc.toLowerCase().indexOf('loose')>-1)action='Pick loose packs';
+    else if(s.type==='sample')action='Pick for sample';
+    else if(s.type==='wholesale')action='Pull full carton(s)';
+    var qtyStr='';
+    var mPks=s.desc.match(/pick (\d+) loose/i);
+    var mCtns=s.desc.match(/(\d+) sealed carton/i);
+    if(mPks)qtyStr=mPks[1]+' pks';
+    else if(mCtns){var n=parseInt(mCtns[1]);qtyStr=n+' ctn'+(n!==1?'s':'');}
+    var skuPart=s.desc.split('—')[0].replace('arrow FBA shipment','').trim();
+    if(skuPart.length>60)skuPart=skuPart.substring(0,58)+'...';
+    pickBody.push([String(stepNum),s.label,skuPart,action,qtyStr]);
+    pickStyles.push({ri:pickBody.length-1,bg:bg,acc:acc});
   });
-
   doc.autoTable({
-    startY: y,
-    margin: {left: ML, right: MR},
-    head: [['Step','Pallet','Details','Action','✓']],
-    body: pickRows,
-    theme: 'plain',
-    styles: { fontSize:9, cellPadding:6, valign:'middle', overflow:'linebreak' },
-    headStyles: { fillColor:[26,39,68], textColor:255, fontStyle:'bold', fontSize:8 },
-    columnStyles: {
-      0: { cellWidth:26, halign:'center', fontStyle:'bold' },
-      1: { cellWidth:100, fontStyle:'bold' },
-      2: { cellWidth:pageW*0.41, fontSize:8, textColor:[100,116,139] },
-      3: { cellWidth:110, fontStyle:'bold', fontSize:8 },
-      4: { cellWidth:24, halign:'center', fontSize:14 },
+    startY:y,margin:{left:ML,right:MR},
+    head:[['Step','Pallet','SKU & Details','Action','Qty']],
+    body:pickBody,theme:'plain',
+    styles:{fontSize:9,cellPadding:6,valign:'middle',overflow:'linebreak'},
+    headStyles:{fillColor:[26,39,68],textColor:255,fontStyle:'bold',fontSize:8},
+    columnStyles:{
+      0:{cellWidth:30,halign:'center',fontStyle:'bold'},
+      1:{cellWidth:90,fontStyle:'bold'},
+      2:{cellWidth:PW*0.40,fontSize:8,textColor:[100,116,139]},
+      3:{cellWidth:PW*0.22,fontStyle:'bold',fontSize:8},
+      4:{cellWidth:50,halign:'center',fontStyle:'bold'},
     },
-    tableLineColor: [226,232,240],
-    tableLineWidth: 0.5,
-    didParseCell: function(data) {
-      if (data.section === 'body') {
-        const style = pickBodyStyles[data.row.index];
-        if (style) {
-          data.cell.styles.fillColor = style.bg;
-          if (data.column.index === 0 || data.column.index === 3) {
-            data.cell.styles.textColor = style.accent;
-          }
+    tableLineColor:[226,232,240],tableLineWidth:0.5,
+    didParseCell:function(data){
+      if(data.section==='body'){
+        var st=pickStyles[data.row.index];
+        if(st){
+          data.cell.styles.fillColor=st.bg;
+          if(data.column.index===0||data.column.index===3||data.column.index===4)data.cell.styles.textColor=st.acc;
         }
       }
-    },
+    }
   });
-  y = doc.lastAutoTable.finalY + 12;
+  y=doc.lastAutoTable.finalY+12;
 
-  // ── FOOTER ────────────────────────────────────────────────
-  doc.setDrawColor(200,210,220);
-  doc.line(ML, y, ML+pageW, y);
-  y += 8;
-  doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.setTextColor(22,163,74);
-  doc.text(String(p.totalPacks), ML, y+14);
-  doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(100,116,139);
-  doc.text('TOTAL PACKS', ML, y+24);
-
-  doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.setTextColor(234,88,12);
-  doc.text(String(p.totalCtns), ML+90, y+14);
-  doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(100,116,139);
-  doc.text('CARTONS OPENED', ML+90, y+24);
-
-  doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(...chCol);
-  doc.text(channel, ML+200, y+14);
-  doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(100,116,139);
-  doc.text('CHANNEL', ML+200, y+24);
-
-  doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(150,160,175);
-  doc.text(`US Casa WMS  ·  ${dateStr}  ${timeStr}`, ML+pageW, y+24, {align:'right'});
-
-  doc.save(`PickPlan_${channel.replace(/\s+/g,'_')}_${now.toISOString().slice(0,10)}.pdf`);
-  toast('✅ Pick Plan PDF downloaded', 'ok');
+  // FOOTER
+  doc.setDrawColor(...NAVY);doc.setLineWidth(1.5);doc.line(ML,y,ML+PW,y);y+=8;
+  doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(22,163,74);doc.text(String(p.totalPacks),ML,y+13);
+  doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...MUTED);doc.text('TOTAL PACKS',ML,y+23);
+  doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(234,88,12);doc.text(String(p.totalCtns),ML+90,y+13);
+  doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...MUTED);doc.text('CARTONS OPENED',ML+90,y+23);
+  doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(...chCol);doc.text(ch,ML+210,y+13);
+  doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...MUTED);doc.text('CHANNEL',ML+210,y+23);
+  doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...MUTED);
+  doc.text('US Casa WMS  '+dateStr+'  '+timeStr,ML+PW,y+23,{align:'right'});
+  doc.save('PickPlan_'+ch.replace(/\s+/g,'_')+'_'+now.toISOString().slice(0,10)+'.pdf');
+  toast('Pick Plan PDF downloaded','ok');
 }
 
 async function resetAllPicks() {
@@ -1997,6 +2172,248 @@ function showSyncStatus(status) {
     badge.style.borderColor = 'rgba(220,38,38,.3)';
     badge.style.color = '#f87171';
   }
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// CSV BULK UPLOAD
+// ══════════════════════════════════════════════════════════════
+var csvParsedRows = [];
+
+function downloadCSVTemplate() {
+  var rows = [
+    ['SKU', 'Box Qty (cartons)', 'Pack Qty (packs)'],
+    ['HB-C-TWL-400-SGY-46', '2', '0'],
+    ['NM-TWL-500-A-71', '1', '6'],
+    ['GM-TWL-400-W-71', '0', '8'],
+    ['NM-TWL-500-BK-33', '1', '0'],
+  ];
+  var csv = rows.map(function(r){ return r.map(function(c){ return '"'+c+'"'; }).join(','); }).join('\n');
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'}));
+  a.download = 'USC_Pick_Template.csv';
+  a.click();
+}
+
+function handleCSVUpload(event) {
+  var file = event.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var text = e.target.result;
+    parseCSVFile(text);
+  };
+  reader.readAsText(file);
+  // Reset input so same file can be re-uploaded
+  event.target.value = '';
+}
+
+function parseCSVRow(cols, headers) {
+  // Returns {sku, totalPacks} or null
+  // Detect Amazon format: has 'Total units' or 'Units per box' column
+  var skuCol = 0;
+  var qtyCol = -1;
+  var boxCol = -1;
+  var packCol = -1;
+  var isAmazon = false;
+
+  if (headers) {
+    headers.forEach(function(h, i) {
+      var hl = h.toLowerCase().trim();
+      if (hl === 'sku' || hl === 'msku' || hl === 'merchant sku') skuCol = i;
+      if (hl === 'total units' || hl === 'units') qtyCol = i;
+      if (hl === 'units per box') { boxCol = i; isAmazon = true; }
+      if (hl === 'total boxes') packCol = i; // in template format
+      if (hl === 'box qty (cartons)' || hl === 'box qty') boxCol = i;
+      if (hl === 'pack qty (packs)' || hl === 'pack qty') packCol = i;
+    });
+  }
+
+  var sku = (cols[skuCol] || '').replace(/^"|"$/g,'').toUpperCase().trim();
+  if (!sku || sku === 'SKU' || sku === 'MSKU') return null;
+
+  var totalPacks = 0;
+  if (qtyCol >= 0 && cols[qtyCol]) {
+    // Amazon format — use Total units directly
+    totalPacks = parseInt(cols[qtyCol]) || 0;
+  } else if (boxCol >= 0 || packCol >= 0) {
+    // Our template format — box qty * ppc + pack qty
+    var inv = inventory.find(function(s){ return s.sku === sku; });
+    var ppc = inv ? inv.ppc : 1;
+    var boxQty  = parseInt((cols[boxCol]  || '').replace(/[^0-9]/g,'')) || 0;
+    var packQty = parseInt((cols[packCol] || '').replace(/[^0-9]/g,'')) || 0;
+    totalPacks = (boxQty * ppc) + packQty;
+  } else if (cols.length >= 2) {
+    // Fallback: col2 is qty
+    totalPacks = parseInt((cols[1]||'').replace(/[^0-9]/g,'')) || 0;
+  }
+
+  return {sku: sku, totalPacks: totalPacks};
+}
+
+// Proper CSV line parser that handles quoted fields with commas inside
+function parseCSVLine(line) {
+  var cols = [];
+  var cur = '';
+  var inQuote = false;
+  for (var i = 0; i < line.length; i++) {
+    var ch = line[i];
+    if (ch === '"') {
+      inQuote = !inQuote;
+    } else if (ch === ',' && !inQuote) {
+      cols.push(cur.trim());
+      cur = '';
+    } else {
+      cur += ch;
+    }
+  }
+  cols.push(cur.trim());
+  return cols;
+}
+
+function parseCSVFile(text) {
+  text = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+  var allLines = text.trim().split('\n');
+  csvParsedRows = [];
+  var valid = 0, invalid = 0;
+
+  // Find header row containing 'SKU' and unit-related columns
+  var headerIdx = -1;
+  var headers = null;
+  for (var i = 0; i < Math.min(allLines.length, 15); i++) {
+    var lower = allLines[i].toLowerCase();
+    if (lower.includes('sku') && (lower.includes('unit') || lower.includes('qty') || lower.includes('box'))) {
+      headerIdx = i;
+      headers = parseCSVLine(allLines[i]).map(function(h){ return h.replace(/^"|"$/g,'').trim().toLowerCase(); });
+      break;
+    }
+  }
+  if (headerIdx < 0) { toast('Could not find SKU header row in CSV', 'err'); return; }
+
+  // Find column indices
+  var skuCol       = headers.indexOf('sku');
+  var totalUnitsCol = -1;
+  var unitsPerBoxCol = -1;
+  var totalBoxesCol  = -1;
+  var boxQtyCol = -1;
+  var packQtyCol = -1;
+  headers.forEach(function(h, i) {
+    if (h === 'total units' || h === 'units') totalUnitsCol = i;
+    if (h === 'units per box') unitsPerBoxCol = i;
+    if (h === 'total boxes') totalBoxesCol = i;
+    if (h === 'box qty (cartons)' || h === 'box qty') boxQtyCol = i;
+    if (h === 'pack qty (packs)' || h === 'pack qty') packQtyCol = i;
+  });
+  if (skuCol < 0) { toast('No SKU column found in CSV', 'err'); return; }
+
+  var dataLines = allLines.slice(headerIdx + 1);
+  dataLines.forEach(function(line) {
+    if (!line.trim()) return;
+    var cols = parseCSVLine(line);
+
+    var sku = (cols[skuCol] || '').replace(/^"|"$/g,'').toUpperCase().trim();
+    if (!sku || sku === 'SKU') return;
+
+    var totalPacks = 0;
+    if (totalUnitsCol >= 0 && cols[totalUnitsCol]) {
+      // Amazon format: read Total units directly
+      totalPacks = parseInt(cols[totalUnitsCol]) || 0;
+    } else if (boxQtyCol >= 0 || packQtyCol >= 0) {
+      // Our template: box qty * ppc + pack qty
+      var inv2 = inventory.find(function(s){ return s.sku === sku; });
+      var ppc2 = inv2 ? inv2.ppc : 1;
+      var bq = parseInt((cols[boxQtyCol] || '0')) || 0;
+      var pq = parseInt((cols[packQtyCol] || '0')) || 0;
+      totalPacks = bq * ppc2 + pq;
+    }
+    if (!totalPacks) return;
+
+    var inv = inventory.find(function(s){ return s.sku === sku; });
+    if (!inv) {
+      csvParsedRows.push({sku:sku, totalPacks:totalPacks, status:'not_found'});
+      invalid++;
+      return;
+    }
+
+    var finalQty = Math.min(totalPacks, inv.packs);
+    var capped   = finalQty < totalPacks;
+    var status   = inv.packs === 0 ? 'out' : capped ? 'capped' : 'ok';
+    var ctns     = Math.floor(finalQty / inv.ppc);
+    var extra    = finalQty % inv.ppc;
+
+    csvParsedRows.push({
+      sku:sku, totalPacks:totalPacks, finalQty:finalQty,
+      boxQty:ctns, packQty:extra,
+      color:inv.color, size:inv.size, ppc:inv.ppc,
+      available:inv.packs, status:status
+    });
+    if (status !== 'out') valid++;
+    else invalid++;
+  });
+
+  renderCSVPreview();
+  document.getElementById('csv-count').textContent = valid + ' ready · ' + invalid + ' issues';
+}
+
+function renderCSVPreview() {
+  var tbody = document.getElementById('csv-preview-rows');
+  tbody.innerHTML = csvParsedRows.map(function(r, i) {
+    var bg = i % 2 === 0 ? '#f8fafc' : '#fff';
+    if (r.status === 'not_found') {
+      return '<tr style="background:#fef2f2">' +
+        '<td style="padding:6px 10px;font-weight:700;font-size:11px;color:#dc2626">' + r.sku + '</td>' +
+        '<td colspan="4" style="padding:6px;text-align:center;color:#dc2626;font-size:11px">❌ SKU not found in inventory</td>' +
+        '</tr>';
+    }
+    if (r.status === 'out') {
+      return '<tr style="background:#f8fafc">' +
+        '<td style="padding:6px 10px;font-weight:700;font-size:11px;color:#94a3b8">' + r.sku + '</td>' +
+        '<td style="padding:6px;text-align:center;color:#94a3b8">' + r.boxQty + '</td>' +
+        '<td style="padding:6px;text-align:center;color:#94a3b8">' + r.packQty + '</td>' +
+        '<td style="padding:6px;text-align:center;color:#94a3b8">' + r.totalPacks + '</td>' +
+        '<td style="padding:6px;text-align:center"><span class="chip chip-gray">Out</span></td>' +
+        '</tr>';
+    }
+    var statusBadge = r.status === 'capped'
+      ? '<span class="chip chip-yellow">⚠️ Capped ' + r.finalQty + '</span>'
+      : '<span class="chip chip-green">✅ Ready</span>';
+    var modeLabel = '';
+    if (r.boxQty > 0 && r.packQty > 0) modeLabel = r.boxQty + 'c + ' + r.packQty + 'pk';
+    else if (r.boxQty > 0) modeLabel = r.boxQty + ' ctn' + (r.boxQty!==1?'s':'');
+    else modeLabel = r.packQty + ' pks';
+    return '<tr style="background:' + bg + '">' +
+      '<td style="padding:6px 10px;font-weight:700;font-size:11px">' + r.sku + '<div style="font-size:10px;color:#94a3b8;font-weight:400">' + r.color + ' · ' + r.size + '</div></td>' +
+      '<td style="padding:6px;text-align:center;font-weight:700">' + (r.boxQty || '—') + '</td>' +
+      '<td style="padding:6px;text-align:center;font-weight:700">' + (r.packQty || '—') + '</td>' +
+      '<td style="padding:6px;text-align:center;font-weight:700;color:#2563eb">' + r.finalQty + '</td>' +
+      '<td style="padding:6px;text-align:center">' + statusBadge + '</td>' +
+      '</tr>';
+  }).join('');
+  document.getElementById('csv-preview').style.display = 'block';
+}
+
+function addCSVToQueue() {
+  var added = 0;
+  csvParsedRows.forEach(function(r) {
+    if (r.status === 'not_found' || r.status === 'out' || !r.finalQty) return;
+    var modeLabel = '';
+    if (r.boxQty > 0 && r.packQty > 0) modeLabel = r.boxQty + 'c + ' + r.packQty + 'pk (' + r.finalQty + ' pks)';
+    else if (r.boxQty > 0) modeLabel = r.boxQty + ' ctn' + (r.boxQty!==1?'s':'') + ' (' + r.finalQty + ' pks)';
+    else modeLabel = r.finalQty + ' pks';
+    pickQueue.push({sku:r.sku, qty:r.finalQty, color:r.color, size:r.size, ppc:r.ppc, modeLabel:modeLabel});
+    added++;
+  });
+  clearCSV();
+  renderQueue();
+  // Close the details
+  document.getElementById('bulk-details').removeAttribute('open');
+  toast('✅ Added ' + added + ' SKU' + (added!==1?'s':'') + ' to queue', 'ok');
+}
+
+function clearCSV() {
+  csvParsedRows = [];
+  document.getElementById('csv-preview').style.display = 'none';
+  document.getElementById('csv-preview-rows').innerHTML = '';
 }
 
 document.addEventListener('DOMContentLoaded', init);
