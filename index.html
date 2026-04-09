@@ -385,6 +385,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
             <!-- Preview table -->
             <div id="csv-preview" style="display:none;margin-top:10px">
+              <div id="csv-issues-banner"></div>
               <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">
                 Preview — <span id="csv-count"></span>
               </div>
@@ -1160,6 +1161,26 @@ function clearQueue() { pickQueue = []; renderQueue(); document.getElementById('
 
 function generatePlan() {
   if (!pickQueue.length) { toast('Add items to queue first', 'err'); return; }
+
+  // Pre-check: warn about out-of-stock or low-stock SKUs BEFORE generating
+  var outOfStock = [];
+  var lowStock = [];
+  pickQueue.forEach(function(item) {
+    var inv = inventory.find(function(s){ return s.sku === item.sku; });
+    if (!inv || inv.packs === 0) {
+      outOfStock.push(item.sku);
+    } else if (inv.packs < item.qty) {
+      lowStock.push(item.sku + ' (need ' + item.qty + ', have ' + inv.packs + ')');
+    }
+  });
+
+  if (outOfStock.length > 0) {
+    var msg = 'OUT OF STOCK — removed from plan:\n' + outOfStock.join('\n');
+    toast('⚠️ ' + outOfStock.length + ' SKU' + (outOfStock.length!==1?'s are':' is') + ' out of stock — see plan for details', 'err');
+  }
+  if (lowStock.length > 0) {
+    toast('⚠️ ' + lowStock.length + ' SKU' + (lowStock.length!==1?'s are':' is') + ' short — will be capped: ' + lowStock.slice(0,2).join(', ') + (lowStock.length>2?' +'+( lowStock.length-2)+' more':''), 'info');
+  }
   const ch = currentChannel;
   const steps = [];
   let totalPacks = 0, totalCtns = 0;
@@ -1169,13 +1190,13 @@ function generatePlan() {
     let needed = item.qty;
     const inv = inventory.find(s => s.sku === item.sku);
     if (!inv || inv.packs === 0) {
-      steps.push({type:'warn', label:'⚠️ Out of Stock', desc:item.sku + ': 0 packs available — skipped'});
+      steps.push({type:'warn', label:'⚠️ OUT OF STOCK', desc:item.sku + ' · ' + (item.color||'') + ' · ' + (item.size||'') + ' — 0 packs available, SKU skipped'});
       return;
     }
     // If requested more than available, cap at what's there and warn
     let cappedNote = '';
     if (inv.packs < needed) {
-      cappedNote = ' ⚠️ Only ' + inv.packs + ' available (requested ' + needed + ')';
+      cappedNote = '  ⚠️ SHORT: only ' + inv.packs + ' available, requested ' + needed;
       needed = inv.packs;
       item.qty = needed; // update queue item so confirm deducts correct amount
     }
@@ -1240,6 +1261,18 @@ function generatePlan() {
     var avail = inv2 ? inv2.packs : 0;
     return sum + Math.min(item.qty, avail);
   }, 0);
+
+  // Sort steps by pallet number so pick plan goes in order Pallet 1 → 2 → 3...
+  steps.sort(function(a, b) {
+    var getPalletNum = function(s) {
+      var m = s.label.match(/Pallet\s+(\d+)/i);
+      return m ? parseInt(m[1]) : 9999;
+    };
+    // warn steps go to end
+    if (a.type === 'warn') return 1;
+    if (b.type === 'warn') return -1;
+    return getPalletNum(a) - getPalletNum(b);
+  });
 
   currentPlan = {steps, totalPacks, totalCtns, channel:ch, queue:[...pickQueue]};
   document.getElementById('plan-output').style.display = 'block';
@@ -2356,6 +2389,26 @@ function parseCSVFile(text) {
 }
 
 function renderCSVPreview() {
+  // Build issues summary shown above the table
+  var issues = csvParsedRows.filter(function(r){ return r.status !== 'ok'; });
+  var issueHtml = '';
+  if (issues.length > 0) {
+    issueHtml = '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 12px;margin-bottom:8px">' +
+      '<div style="font-size:11px;font-weight:700;color:#dc2626;margin-bottom:6px">⚠️ ' + issues.length + ' ISSUE' + (issues.length!==1?'S':'') + ' — review before adding to queue</div>' +
+      issues.map(function(r) {
+        var msg = '';
+        if (r.status === 'not_found') msg = '❌ Not in inventory';
+        else if (r.status === 'out')   msg = '⚪ Out of stock (0 packs available)';
+        else if (r.status === 'capped') msg = '⚠️ Short — need ' + r.totalPacks + ', only ' + r.available + ' available (will send ' + r.finalQty + ')';
+        return '<div style="font-size:11px;padding:2px 0;display:flex;justify-content:space-between">' +
+          '<span style="font-weight:700;color:#1e293b">' + r.sku + '</span>' +
+          '<span style="color:#dc2626">' + msg + '</span>' +
+          '</div>';
+      }).join('') +
+      '</div>';
+  }
+  document.getElementById('csv-issues-banner').innerHTML = issueHtml;
+
   var tbody = document.getElementById('csv-preview-rows');
   tbody.innerHTML = csvParsedRows.map(function(r, i) {
     var bg = i % 2 === 0 ? '#f8fafc' : '#fff';
