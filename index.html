@@ -477,12 +477,13 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     <button class="btn btn-gray btn-sm" onclick="setLogToday()">Today</button>
     <button class="btn btn-gray btn-sm" onclick="setLogThisWeek()">This Week</button>
     <button class="btn btn-gray btn-sm" style="margin-left:auto" onclick="undoLast()">↩ Undo Last</button>
+    <button class="btn btn-gray btn-sm" onclick="openRecycleBin()">🗑️ Recycle Bin</button>
     <button class="btn btn-gray btn-sm" onclick="exportLog()">⬇ CSV</button>
   </div>
   <div class="tbl-wrap scroll">
     <table>
       <thead><tr>
-        <th>Time</th><th>Channel</th><th>SKU</th><th>Color</th><th>Size</th><th>Pallet(s)</th><th>Packs</th><th>Cartons</th><th>Note</th>
+        <th>Time</th><th>Channel</th><th>SKU</th><th>Color</th><th>Size</th><th>Pallet(s)</th><th>Packs</th><th>Cartons</th><th>Note</th><th></th>
       </tr></thead>
       <tbody id="log-tbody"></tbody>
     </table>
@@ -1262,16 +1263,20 @@ function generatePlan() {
     return sum + Math.min(item.qty, avail);
   }, 0);
 
-  // Sort steps by pallet number so pick plan goes in order Pallet 1 → 2 → 3...
+  // Sort steps: pallet number first, then open cartons after sealed on same pallet
   steps.sort(function(a, b) {
     var getPalletNum = function(s) {
-      var m = s.label.match(/Pallet\s+(\d+)/i);
+      var m = s.label.match(/Pallet (\d+)/i);
       return m ? parseInt(m[1]) : 9999;
     };
+    var isOpen = function(s) { return s.type === 'open-ctn' ? 1 : 0; };
     // warn steps go to end
     if (a.type === 'warn') return 1;
     if (b.type === 'warn') return -1;
-    return getPalletNum(a) - getPalletNum(b);
+    var pa = getPalletNum(a), pb = getPalletNum(b);
+    if (pa !== pb) return pa - pb;
+    // Same pallet: sealed cartons before open cartons
+    return isOpen(a) - isOpen(b);
   });
 
   currentPlan = {steps, totalPacks, totalCtns, channel:ch, queue:[...pickQueue]};
@@ -1603,7 +1608,7 @@ function renderLog() {
 
   if (!list.length) {
     document.getElementById('log-tbody').innerHTML =
-      '<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--muted)">No transactions in this range</td></tr>';
+      '<tr><td colspan="10" style="text-align:center;padding:30px;color:var(--muted)">No transactions in this range</td></tr>';
     return;
   }
 
@@ -1612,7 +1617,13 @@ function renderLog() {
   const totalCtns  = list.reduce(function(a,t){ return a + (t.ctns || 0); }, 0);
   const totalRows  = list.length;
 
-  const rows = list.map(function(t) {
+  const rows = list.map(function(t, idx) {
+    const realIdx = txLog.indexOf(t);
+    const isLive = t.note && t.note.startsWith('Pick:');
+    const actionBtns = isLive
+      ? '<button onclick="editLogEntry(' + realIdx + ')" style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px" title="Edit">✏️</button>' +
+        '<button onclick="deleteLogEntry(' + realIdx + ')" style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px" title="Delete">🗑️</button>'
+      : '';
     return '<tr>' +
       '<td style="font-size:11px;color:var(--muted);white-space:nowrap">' + new Date(t.time).toLocaleString() + '</td>' +
       '<td>' + chChip(t.channel) + '</td>' +
@@ -1623,6 +1634,7 @@ function renderLog() {
       '<td class="' + (t.type==='out'?'qty-neg':'qty-pos') + '">' + (t.type==='out'?'-':'+') + t.packs + '</td>' +
       '<td style="color:var(--muted)">' + (t.ctns||'—') + '</td>' +
       '<td style="font-size:12px;color:var(--muted)">' + (t.note||'') + '</td>' +
+      '<td style="white-space:nowrap">' + actionBtns + '</td>' +
       '</tr>';
   }).join('');
 
@@ -1630,7 +1642,7 @@ function renderLog() {
   const totalsRow =
     '<tr style="background:var(--navy);color:#fff;font-weight:800;position:sticky;bottom:0">' +
     '<td style="font-size:11px">TOTAL (' + totalRows + ' entries)</td>' +
-    '<td></td><td></td><td></td><td></td><td></td>' +
+    '<td></td><td></td><td></td><td></td><td></td>'
     '<td style="color:#f87171;font-size:14px">-' + totalPacks.toLocaleString() + ' pks</td>' +
     '<td style="color:#fcd34d">' + (totalCtns || '—') + ' ctns</td>' +
     '<td></td>' +
@@ -2469,10 +2481,197 @@ function clearCSV() {
   document.getElementById('csv-preview-rows').innerHTML = '';
 }
 
+
+// ══════════════════════════════════════════════════════════════
+// LOG EDIT & RECYCLE BIN
+// ══════════════════════════════════════════════════════════════
+var deletedEntries = []; // recycle bin
+var editingLogIdx = -1;
+
+function editLogEntry(idx) {
+  const t = txLog[idx];
+  if (!t) return;
+  editingLogIdx = idx;
+  document.getElementById('edit-sku').value     = t.sku || '';
+  document.getElementById('edit-channel').value = t.channel || 'Amazon FBA';
+  document.getElementById('edit-packs').value   = t.packs || 0;
+  document.getElementById('edit-ctns').value    = t.ctns || 0;
+  document.getElementById('edit-note').value    = t.note || '';
+  const modal = document.getElementById('log-edit-modal');
+  modal.style.display = 'flex';
+}
+
+function closeLogEdit() {
+  document.getElementById('log-edit-modal').style.display = 'none';
+  editingLogIdx = -1;
+}
+
+async function saveLogEdit() {
+  if (editingLogIdx < 0) return;
+  const t = txLog[editingLogIdx];
+  if (!t) return;
+
+  const newChannel = document.getElementById('edit-channel').value;
+  const newPacks   = parseInt(document.getElementById('edit-packs').value) || t.packs;
+  const newCtns    = parseInt(document.getElementById('edit-ctns').value) || 0;
+  const newNote    = document.getElementById('edit-note').value;
+
+  // Update in Supabase if has ID
+  if (t.id) {
+    const { error } = await sb.from('picks').update({
+      channel: newChannel, packs: newPacks, ctns: newCtns, note: newNote
+    }).eq('id', t.id);
+    if (error) { toast('Error saving to Supabase: ' + error.message, 'err'); return; }
+  }
+
+  // Update in memory
+  t.channel = newChannel;
+  t.packs   = newPacks;
+  t.ctns    = newCtns;
+  t.note    = newNote;
+
+  // Update in livePickLog too
+  const li = livePickLog.find(function(x){ return x === t || x.id === t.id; });
+  if (li) { li.channel = newChannel; li.packs = newPacks; li.ctns = newCtns; li.note = newNote; }
+
+  try { localStorage.setItem('usc_livePickLog', JSON.stringify(livePickLog)); } catch(e) {}
+
+  closeLogEdit();
+  buildInventory();
+  renderAll();
+  toast('✅ Log entry updated', 'ok');
+}
+
+async function deleteLogEntry(idx) {
+  const t = txLog[idx];
+  if (!t) return;
+  if (!confirm('Delete entry: ' + t.sku + ' · ' + t.packs + ' packs · ' + t.channel)) return;
+
+  // Move to recycle bin FIRST
+  deletedEntries.unshift(Object.assign({}, t, {deletedAt: new Date().toISOString()}));
+
+  // Delete from Supabase
+  if (t.id) {
+    const { error } = await sb.from('picks').delete().eq('id', t.id);
+    if (error) { toast('Error deleting from Supabase: ' + error.message, 'err'); return; }
+  }
+
+  // Remove from txLog and livePickLog
+  txLog.splice(idx, 1);
+  const li = livePickLog.findIndex(function(x){ return x === t || (t.id && x.id === t.id); });
+  if (li > -1) livePickLog.splice(li, 1);
+
+  try { localStorage.setItem('usc_livePickLog', JSON.stringify(livePickLog)); } catch(e) {}
+
+  buildInventory();
+  renderAll();
+  toast('🗑️ Deleted — open Recycle Bin to restore', 'info');
+}
+
+function openRecycleBin() {
+  const list = document.getElementById('recycle-list');
+  if (!deletedEntries.length) {
+    list.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted)">Recycle bin is empty</div>';
+  } else {
+    list.innerHTML = deletedEntries.map(function(t, i) {
+      return '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">' +
+        '<div style="flex:1">' +
+          '<div style="font-weight:700;font-size:13px">' + t.sku + '</div>' +
+          '<div style="font-size:11px;color:var(--muted)">' + t.channel + ' · ' + t.packs + ' packs · ' + new Date(t.time).toLocaleString() + '</div>' +
+          '<div style="font-size:10px;color:#f87171">Deleted ' + new Date(t.deletedAt).toLocaleString() + '</div>' +
+        '</div>' +
+        '<button class="btn btn-green btn-sm" onclick="restoreEntry(' + i + ')">↩ Restore</button>' +
+      '</div>';
+    }).join('');
+  }
+  document.getElementById('recycle-modal').style.display = 'flex';
+}
+
+function closeRecycleBin() {
+  document.getElementById('recycle-modal').style.display = 'none';
+}
+
+async function restoreEntry(idx) {
+  const t = deletedEntries[idx];
+  if (!t) return;
+
+  // Re-insert into Supabase
+  const row = { sku:t.sku, color:t.color, size:t.size, channel:t.channel,
+    packs:t.packs, ctns:t.ctns||0, pallets:t.pallets, note:t.note, type:t.type||'out' };
+  const { data, error } = await sb.from('picks').insert([row]).select();
+  if (error) { toast('Error restoring: ' + error.message, 'err'); return; }
+
+  // Restore with new ID
+  const restored = Object.assign({}, t);
+  delete restored.deletedAt;
+  if (data && data[0]) { restored.id = data[0].id; seenIds.add(data[0].id); }
+
+  txLog.unshift(restored);
+  livePickLog.unshift(restored);
+  deletedEntries.splice(idx, 1);
+
+  try { localStorage.setItem('usc_livePickLog', JSON.stringify(livePickLog)); } catch(e) {}
+
+  buildInventory();
+  renderAll();
+  closeRecycleBin();
+  toast('↩ Entry restored', 'ok');
+}
+
 document.addEventListener('DOMContentLoaded', init);
 </script>
 
 <!-- PRINT AREA FOR PICK PLAN PDF -->
 <div id="print-area" style="display:none"></div>
+
+<!-- Log Entry Edit Modal -->
+<div id="log-edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center">
+  <div style="background:var(--white);border-radius:16px;padding:24px;width:440px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+      <div style="font-size:15px;font-weight:800;color:var(--navy)">✏️ Edit Log Entry</div>
+      <button onclick="closeLogEdit()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">✕</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase">SKU</label>
+        <input id="edit-sku" style="width:100%;margin-top:4px;height:36px;border:1px solid var(--border);border-radius:8px;padding:0 10px;font-size:13px" readonly>
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase">Channel</label>
+        <select id="edit-channel" style="width:100%;margin-top:4px;height:36px;border:1px solid var(--border);border-radius:8px;padding:0 10px;font-size:13px">
+          <option>Amazon FBA</option><option>eBay</option><option>TikTok Shop</option><option>Sample</option><option>Wholesale</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase">Packs</label>
+        <input id="edit-packs" type="number" min="1" style="width:100%;margin-top:4px;height:36px;border:1px solid var(--border);border-radius:8px;padding:0 10px;font-size:13px">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase">Cartons</label>
+        <input id="edit-ctns" type="number" min="0" style="width:100%;margin-top:4px;height:36px;border:1px solid var(--border);border-radius:8px;padding:0 10px;font-size:13px">
+      </div>
+      <div style="grid-column:1/-1">
+        <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase">Note</label>
+        <input id="edit-note" style="width:100%;margin-top:4px;height:36px;border:1px solid var(--border);border-radius:8px;padding:0 10px;font-size:13px">
+      </div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-blue" style="flex:1" onclick="saveLogEdit()">💾 Save Changes</button>
+      <button class="btn btn-gray" onclick="closeLogEdit()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Recycle Bin Modal -->
+<div id="recycle-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center">
+  <div style="background:var(--white);border-radius:16px;padding:24px;width:540px;max-width:95vw;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="font-size:15px;font-weight:800;color:var(--navy)">🗑️ Recycle Bin</div>
+      <button onclick="closeRecycleBin()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">✕</button>
+    </div>
+    <div id="recycle-list" style="overflow-y:auto;flex:1;margin-bottom:16px"></div>
+    <button class="btn btn-gray btn-sm" onclick="closeRecycleBin()">Close</button>
+  </div>
+</div>
 </body>
 </html>
