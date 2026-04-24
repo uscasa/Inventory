@@ -189,7 +189,7 @@ tbody td{padding:10px 14px;vertical-align:middle}
   .stat .sv{font-size:20px}
 }
 
-/* ══ PICK PLAN PDF PRINT ══════════════════════════════════════ */
+/* ââ PICK PLAN PDF PRINT ââââââââââââââââââââââââââââââââââââââ */
 @media print {
   body * { visibility: hidden; }
   #print-area, #print-area * { visibility: visible; }
@@ -233,29 +233,28 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 <body>
 
 <nav class="nav">
-  <div class="brand"><div class="brand-icon">🏠</div>US Casa WMS</div>
-  <button class="nav-btn active" data-page="inventory"><span class="ni">📦</span><span>Inventory</span></button>
-  <button class="nav-btn" data-page="pallets"><span class="ni">🏭</span><span>Pallets</span></button>
-  <button class="nav-btn" data-page="pick"><span class="ni">✅</span><span>Pick Plan</span></button>
-  <button class="nav-btn" data-page="alerts"><span class="ni">🚨</span><span>Alerts</span></button>
-  <button class="nav-btn" data-page="log"><span class="ni">📋</span><span>Log</span></button>
-  <button class="nav-btn" data-page="reports"><span class="ni">📊</span><span>Reports</span></button>
+  <div class="brand"><div class="brand-icon">ð </div>US Casa WMS</div>
+  <button class="nav-btn active" data-page="inventory"><span class="ni">ð¦</span><span>Inventory</span></button>
+  <button class="nav-btn" data-page="pallets"><span class="ni">ð­</span><span>Pallets</span></button>
+  <button class="nav-btn" data-page="pick"><span class="ni">â</span><span>Pick Plan</span></button>
+  <button class="nav-btn" data-page="alerts"><span class="ni">ð¨</span><span>Alerts</span></button>
+  <button class="nav-btn" data-page="log"><span class="ni">ð</span><span>Log</span></button>
+  <button class="nav-btn" data-page="reports"><span class="ni">ð</span><span>Reports</span></button>
   <div class="nav-right">
-    <button class="nav-btn" onclick="resetAllPicks()" title="Clear all live picks and reset to scan baseline" style="color:#f87171;font-size:11px">↺ Reset Picks</button>
+    <button class="nav-btn" onclick="resetAllPicks()" title="Clear all live picks and reset to scan baseline" style="color:#f87171;font-size:11px">âº Reset Picks</button>
     <div class="live-badge" id="sync-badge"><div class="live-dot" id="sync-dot"></div><span id="sync-label">Connecting...</span></div>
   </div>
 </nav>
 
-<!-- ═══════════════════════════════════════════════════════ INVENTORY -->
+<!-- âââââââââââââââââââââââââââââââââââââââââââââââââââââââ INVENTORY -->
 <div id="page-inventory" class="page active">
   <div class="stat-row" id="inv-stats"></div>
   <div class="toolbar">
-    <input class="search" id="inv-search" placeholder="🔍  Search SKU, color, size, PO...">
+    <input class="search" id="inv-search" placeholder="ð  Search SKU, color, size, PO...">
     <select class="sel" id="inv-po">
       <option value="">All POs</option>
       <option value="T4-001">T4-001 (HBC)</option>
       <option value="T5-001">T5-001 (HBL)</option>
-      <option value="T5-002">T5-002 (HBL C2)</option>
       <option value="TWL-400-001">TWL-400-001 (GM)</option>
       <option value="TWL-500-001">TWL-500-001 (NM)</option>
     </select>
@@ -266,18 +265,18 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       <option value="critical">Critical</option>
       <option value="out">Out of Stock</option>
     </select>
-    <button class="btn btn-gray btn-sm" onclick="exportInvCSV()">⬇ CSV</button>
+    <button class="btn btn-gray btn-sm" onclick="exportInvCSV()">â¬ CSV</button>
     <button class="btn btn-orange" onclick="openAdj()">+ Adjust Stock</button>
   </div>
   <div class="tbl-wrap scroll">
     <table>
       <thead><tr>
-        <th onclick="sortInv('sku')">SKU ↕</th>
-        <th onclick="sortInv('color')">Color ↕</th>
-        <th onclick="sortInv('size')">Size ↕</th>
-        <th onclick="sortInv('po')">PO ↕</th>
-        <th onclick="sortInv('packsIn')">Packs ↕</th>
-        <th onclick="sortInv('ctnsIn')">Cartons ↕</th>
+        <th onclick="sortInv('sku')">SKU â</th>
+        <th onclick="sortInv('color')">Color â</th>
+        <th onclick="sortInv('size')">Size â</th>
+        <th onclick="sortInv('po')">PO â</th>
+        <th onclick="sortInv('packsIn')">Packs â</th>
+        <th onclick="sortInv('ctnsIn')">Cartons â</th>
         <th>PPC</th>
         <th>% Remaining</th>
         <th>Status</th>
@@ -288,32 +287,32 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════ PALLETS -->
+<!-- âââââââââââââââââââââââââââââââââââââââââââââââââââââââ PALLETS -->
 <div id="page-pallets" class="page">
   <div class="toolbar">
-    <input class="search" id="pal-search" placeholder="🔍  Search pallet # or SKU...">
+    <input class="search" id="pal-search" placeholder="ð  Search pallet # or SKU...">
     <span style="font-size:13px;color:var(--muted)" id="pal-count"></span>
   </div>
   <div class="pallet-grid" id="pallet-grid"></div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════ PICK PLAN -->
+<!-- âââââââââââââââââââââââââââââââââââââââââââââââââââââââ PICK PLAN -->
 <div id="page-pick" class="page">
   <div class="pick-layout">
     <!-- Builder -->
     <div>
       <div class="pick-builder">
-        <h3>📦 Build Pick Order</h3>
+        <h3>ð¦ Build Pick Order</h3>
 
         <!-- Channel selector -->
         <div style="margin-bottom:14px">
           <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Channel</div>
           <div class="ch-pills">
-            <button class="ch-pill amazon active" data-ch="Amazon FBA" onclick="setChannel(this)">🛒 Amazon FBA</button>
-            <button class="ch-pill ebay" data-ch="eBay" onclick="setChannel(this)">🔵 eBay</button>
-            <button class="ch-pill tiktok" data-ch="TikTok Shop" onclick="setChannel(this)">🎵 TikTok</button>
-            <button class="ch-pill sample" data-ch="Sample" onclick="setChannel(this)">🎁 Sample</button>
-            <button class="ch-pill wholesale" data-ch="Wholesale" onclick="setChannel(this)">🏢 Wholesale</button>
+            <button class="ch-pill amazon active" data-ch="Amazon FBA" onclick="setChannel(this)">ð Amazon FBA</button>
+            <button class="ch-pill ebay" data-ch="eBay" onclick="setChannel(this)">ðµ eBay</button>
+            <button class="ch-pill tiktok" data-ch="TikTok Shop" onclick="setChannel(this)">ðµ TikTok</button>
+            <button class="ch-pill sample" data-ch="Sample" onclick="setChannel(this)">ð Sample</button>
+            <button class="ch-pill wholesale" data-ch="Wholesale" onclick="setChannel(this)">ð¢ Wholesale</button>
           </div>
         </div>
 
@@ -325,7 +324,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
           <datalist id="sku-dl"></datalist>
         </div>
 
-        <!-- SKU info + qty panel — shown after SKU entered -->
+        <!-- SKU info + qty panel â shown after SKU entered -->
         <div id="sku-picker-panel" style="display:none;background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px">
           <div id="sku-picker-info" style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:12px"></div>
 
@@ -334,11 +333,11 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
           <div style="display:flex;gap:8px;margin-bottom:12px">
             <button id="mode-pks-btn" onclick="setPickMode('pks')"
               style="flex:1;height:44px;border-radius:10px;border:2px solid var(--blue);background:var(--blue);color:#fff;font-size:13px;font-weight:700;cursor:pointer">
-              📦 Packs
+              ð¦ Packs
             </button>
             <button id="mode-ctns-btn" onclick="setPickMode('ctns')"
               style="flex:1;height:44px;border-radius:10px;border:2px solid var(--border);background:var(--white);color:var(--muted);font-size:13px;font-weight:700;cursor:pointer">
-              🗃️ Cartons
+              ðï¸ Cartons
             </button>
           </div>
 
@@ -364,13 +363,13 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         <!-- Bulk CSV Upload -->
         <details style="margin-bottom:12px" id="bulk-details">
           <summary style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;cursor:pointer;user-select:none;padding:4px 0">
-            📂 Bulk Upload — CSV file
+            ð Bulk Upload â CSV file
           </summary>
           <div style="margin-top:10px">
 
             <!-- Download template button -->
             <button class="btn btn-gray btn-sm" style="width:100%;margin-bottom:10px" onclick="downloadCSVTemplate()">
-              ⬇ Download CSV Template
+              â¬ Download CSV Template
             </button>
 
             <!-- Upload area -->
@@ -378,7 +377,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
               style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
                      border:2px dashed var(--border);border-radius:10px;padding:20px;cursor:pointer;
                      background:#f8fafc;transition:all .15s;text-align:center">
-              <span style="font-size:24px">📄</span>
+              <span style="font-size:24px">ð</span>
               <span style="font-size:13px;font-weight:600;color:var(--navy)">Click to upload CSV</span>
               <span style="font-size:11px;color:var(--muted)">Supports Amazon FBA shipment plan CSV or our template</span>
               <input type="file" id="csv-upload" accept=".csv" style="display:none" onchange="handleCSVUpload(event)">
@@ -388,7 +387,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             <div id="csv-preview" style="display:none;margin-top:10px">
               <div id="csv-issues-banner"></div>
               <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">
-                Preview — <span id="csv-count"></span>
+                Preview â <span id="csv-count"></span>
               </div>
               <div style="max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;overflow:hidden">
                 <table style="width:100%;border-collapse:collapse;font-size:12px">
@@ -406,9 +405,9 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
               </div>
               <div style="display:flex;gap:8px;margin-top:8px">
                 <button class="btn btn-green" style="flex:1" onclick="addCSVToQueue()">
-                  ✅ Add All to Queue
+                  â Add All to Queue
                 </button>
-                <button class="btn btn-gray btn-sm" onclick="clearCSV()">✕ Clear</button>
+                <button class="btn btn-gray btn-sm" onclick="clearCSV()">â Clear</button>
               </div>
             </div>
 
@@ -427,7 +426,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
       <!-- Sample Picks -->
       <div class="pick-builder" style="margin-top:14px">
-        <h3>🎁 Quick Sample Picks</h3>
+        <h3>ð Quick Sample Picks</h3>
         <p style="font-size:12px;color:var(--muted);margin-bottom:12px">One-click picks for common sample requests</p>
         <div style="display:flex;flex-direction:column;gap:8px">
           <button class="btn btn-gray" style="justify-content:space-between" onclick="quickSample('HBC_SET')">HBC Full Color Set (1 of each color/size) <span class="chip chip-purple">20 packs</span></button>
@@ -441,26 +440,26 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     <!-- Plan Output -->
     <div id="plan-output" style="display:none">
       <div class="plan-wrap">
-        <h3>📋 Pick Plan</h3>
+        <h3>ð Pick Plan</h3>
         <div class="plan-channel" id="plan-channel-label"></div>
         <div id="plan-steps"></div>
         <div class="plan-total" id="plan-total"></div>
         <div style="display:flex;gap:8px;margin-top:12px">
-          <button class="btn btn-green" style="flex:1" onclick="confirmPick()">✅ Confirm & Deduct</button>
-          <button class="btn btn-blue" onclick="downloadPickPlanPDF()">⬇ Download PDF</button>
-          <button class="btn btn-gray btn-sm" onclick="document.getElementById('plan-output').style.display='none'">✕</button>
+          <button class="btn btn-green" style="flex:1" onclick="confirmPick()">â Confirm & Deduct</button>
+          <button class="btn btn-blue" onclick="downloadPickPlanPDF()">â¬ Download PDF</button>
+          <button class="btn btn-gray btn-sm" onclick="document.getElementById('plan-output').style.display='none'">â</button>
         </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════ ALERTS -->
+<!-- âââââââââââââââââââââââââââââââââââââââââââââââââââââââ ALERTS -->
 <div id="page-alerts" class="page">
   <div id="alerts-content"></div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════ LOG -->
+<!-- âââââââââââââââââââââââââââââââââââââââââââââââââââââââ LOG -->
 <div id="page-log" class="page">
   <div class="toolbar">
     <select class="sel" id="log-ch" onchange="renderLog()">
@@ -477,9 +476,9 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     <button class="btn btn-gray btn-sm" onclick="clearLogDates()">Clear Dates</button>
     <button class="btn btn-gray btn-sm" onclick="setLogToday()">Today</button>
     <button class="btn btn-gray btn-sm" onclick="setLogThisWeek()">This Week</button>
-    <button class="btn btn-gray btn-sm" style="margin-left:auto" onclick="undoLast()">↩ Undo Last</button>
-    <button class="btn btn-gray btn-sm" onclick="openRecycleBin()">🗑️ Recycle Bin</button>
-    <button class="btn btn-gray btn-sm" onclick="exportLog()">⬇ CSV</button>
+    <button class="btn btn-gray btn-sm" style="margin-left:auto" onclick="undoLast()">â© Undo Last</button>
+    <button class="btn btn-gray btn-sm" onclick="openRecycleBin()">ðï¸ Recycle Bin</button>
+    <button class="btn btn-gray btn-sm" onclick="exportLog()">â¬ CSV</button>
   </div>
   <div class="tbl-wrap scroll">
     <table>
@@ -491,7 +490,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════ REPORTS -->
+<!-- âââââââââââââââââââââââââââââââââââââââââââââââââââââââ REPORTS -->
 <div id="page-reports" class="page">
   <div class="toolbar">
     <select class="sel" id="rpt-type" onchange="renderReport()">
@@ -503,12 +502,12 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       <option value="inventory">Inventory Summary</option>
       <option value="container">Container 1 Packing List</option>
     </select>
-    <button class="btn btn-gray btn-sm" onclick="exportReport()">⬇ Export CSV</button>
+    <button class="btn btn-gray btn-sm" onclick="exportReport()">â¬ Export CSV</button>
   </div>
   <div id="rpt-content"></div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════ ADJUST MODAL -->
+<!-- âââââââââââââââââââââââââââââââââââââââââââââââââââââââ ADJUST MODAL -->
 <div class="overlay" id="adj-overlay">
   <div class="modal">
     <h3>Adjust Stock</h3>
@@ -523,7 +522,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       <div class="field"><label>Packs</label><input type="number" id="adj-packs" value="0" min="0"></div>
       <div class="field"><label>Cartons</label><input type="number" id="adj-ctns" value="0" min="0"></div>
       <div class="field"><label>Pallet (opt)</label>
-        <select id="adj-pallet"><option value="">— Any —</option></select>
+        <select id="adj-pallet"><option value="">â Any â</option></select>
       </div>
     </div>
     <div class="field"><label>Note</label><input id="adj-note" placeholder="Reason..."></div>
@@ -537,17 +536,17 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 <div id="toast"></div>
 
 <script>
-// ══════════════════════════════════════════════════════════════════
+// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 // DATA
-// ══════════════════════════════════════════════════════════════════
-const BASE_INV = [{"sku":"GM-TWL-400-A-51","color":"ANTHRAZIT","size":"20x40 in","po":"TWL-400-001","ppc":8,"poly":"4260285685507","cartonBarcode":"4251590118743","totalCtns":20,"totalPacks":160,"ctnsIn":17,"packsIn":143},{"sku":"GM-TWL-400-A-71","color":"ANTHRAZIT","size":"27x54 in","po":"TWL-400-001","ppc":8,"poly":"4260285685606","cartonBarcode":"4251590118750","totalCtns":29,"totalPacks":232,"ctnsIn":26,"packsIn":208},{"sku":"GM-TWL-400-S-51","color":"SAND","size":"20x40 in","po":"TWL-400-001","ppc":8,"poly":"4251590100052","cartonBarcode":"4251590119160","totalCtns":10,"totalPacks":80,"ctnsIn":8,"packsIn":64},{"sku":"GM-TWL-400-S-71","color":"SAND","size":"27x54 in","po":"TWL-400-001","ppc":8,"poly":"4251590100090","cartonBarcode":"4251590119177","totalCtns":19,"totalPacks":152,"ctnsIn":18,"packsIn":151},{"sku":"GM-TWL-400-W-51","color":"WHITE","size":"20x40 in","po":"TWL-400-001","ppc":8,"poly":"4260285685491","cartonBarcode":"4251590119344","totalCtns":20,"totalPacks":160,"ctnsIn":17,"packsIn":143},{"sku":"GM-TWL-400-W-71","color":"WHITE","size":"27x54 in","po":"TWL-400-001","ppc":8,"poly":"4260285685590","cartonBarcode":"4251590119351","totalCtns":30,"totalPacks":240,"ctnsIn":28,"packsIn":224},{"sku":"HB-C-TWL-400-DR-33","color":"DUNE RED","size":"12x12 in","po":"T4-001","ppc":24,"poly":"5061099980241","cartonBarcode":"15061099980248","totalCtns":4,"totalPacks":96,"ctnsIn":3,"packsIn":72},{"sku":"HB-C-TWL-400-DR-46","color":"DUNE RED","size":"16x24 in","po":"T4-001","ppc":24,"poly":"5061099980258","cartonBarcode":"15061099980255","totalCtns":8,"totalPacks":192,"ctnsIn":7,"packsIn":188},{"sku":"HB-C-TWL-400-DR-61","color":"DUNE RED","size":"27x54 in","po":"T4-001","ppc":8,"poly":"5061099980265","cartonBarcode":"15061099980262","totalCtns":8,"totalPacks":64,"ctnsIn":5,"packsIn":47},{"sku":"HB-C-TWL-400-DR-8M","color":"DUNE RED","size":"8 PC SET","po":"T4-001","ppc":12,"poly":"5061099980272","cartonBarcode":"15061099980279","totalCtns":5,"totalPacks":60,"ctnsIn":3,"packsIn":46},{"sku":"HB-C-TWL-400-MG-33","color":"MOSS GREEN","size":"12x12 in","po":"T4-001","ppc":24,"poly":"5061099980289","cartonBarcode":"15061099980286","totalCtns":4,"totalPacks":96,"ctnsIn":2,"packsIn":71},{"sku":"HB-C-TWL-400-MG-46","color":"MOSS GREEN","size":"16x24 in","po":"T4-001","ppc":24,"poly":"5061099980296","cartonBarcode":"15061099980293","totalCtns":10,"totalPacks":240,"ctnsIn":7,"packsIn":186},{"sku":"HB-C-TWL-400-MG-61","color":"MOSS GREEN","size":"27x54 in","po":"T4-001","ppc":8,"poly":"5061099980302","cartonBarcode":"15061099980309","totalCtns":10,"totalPacks":80,"ctnsIn":7,"packsIn":56},{"sku":"HB-C-TWL-400-MG-8M","color":"MOSS GREEN","size":"8 PC SET","po":"T4-001","ppc":12,"poly":"5061099980319","cartonBarcode":"15061099980316","totalCtns":10,"totalPacks":120,"ctnsIn":8,"packsIn":105},{"sku":"HB-C-TWL-400-SGY-33","color":"STEEL GREY","size":"12x12 in","po":"T4-001","ppc":24,"poly":"5061099980326","cartonBarcode":"15061099980323","totalCtns":9,"totalPacks":216,"ctnsIn":8,"packsIn":192},{"sku":"HB-C-TWL-400-SGY-46","color":"STEEL GREY","size":"16x24 in","po":"T4-001","ppc":24,"poly":"5061099980333","cartonBarcode":"15061099980330","totalCtns":30,"totalPacks":720,"ctnsIn":28,"packsIn":687},{"sku":"HB-C-TWL-400-SGY-61","color":"STEEL GREY","size":"27x54 in","po":"T4-001","ppc":8,"poly":"5061099980340","cartonBarcode":"15061099980347","totalCtns":30,"totalPacks":240,"ctnsIn":26,"packsIn":212},{"sku":"HB-C-TWL-400-SGY-8M","color":"STEEL GREY","size":"8 PC SET","po":"T4-001","ppc":12,"poly":"5061099980357","cartonBarcode":"15061099980354","totalCtns":10,"totalPacks":120,"ctnsIn":7,"packsIn":92},{"sku":"HB-C-TWL-400-ST-33","color":"SOFT TEAL","size":"12x12 in","po":"T4-001","ppc":24,"poly":"5061099980364","cartonBarcode":"15061099980361","totalCtns":4,"totalPacks":96,"ctnsIn":1,"packsIn":24},{"sku":"HB-C-TWL-400-ST-46","color":"SOFT TEAL","size":"16x24 in","po":"T4-001","ppc":24,"poly":"5061099980371","cartonBarcode":"15061099980378","totalCtns":8,"totalPacks":192,"ctnsIn":6,"packsIn":166},{"sku":"HB-C-TWL-400-ST-61","color":"SOFT TEAL","size":"27x54 in","po":"T4-001","ppc":8,"poly":"5061099980388","cartonBarcode":"15061099980385","totalCtns":8,"totalPacks":64,"ctnsIn":5,"packsIn":40},{"sku":"HB-C-TWL-400-ST-8M","color":"SOFT TEAL","size":"8 PC SET","po":"T4-001","ppc":12,"poly":"5061099980395","cartonBarcode":"15061099980392","totalCtns":5,"totalPacks":60,"ctnsIn":4,"packsIn":48},{"sku":"HB-C-TWL-400-W-33","color":"WHITE","size":"12x12 in","po":"T4-001","ppc":24,"poly":"5061099980401","cartonBarcode":"15061099980408","totalCtns":4,"totalPacks":96,"ctnsIn":2,"packsIn":63},{"sku":"HB-C-TWL-400-W-46","color":"WHITE","size":"16x24 in","po":"T4-001","ppc":24,"poly":"5061099980418","cartonBarcode":"15061099980415","totalCtns":10,"totalPacks":240,"ctnsIn":8,"packsIn":210},{"sku":"HB-C-TWL-400-W-61","color":"WHITE","size":"27x54 in","po":"T4-001","ppc":8,"poly":"5061099980425","cartonBarcode":"15061099980422","totalCtns":10,"totalPacks":80,"ctnsIn":7,"packsIn":63},{"sku":"HB-C-TWL-400-W-8M","color":"WHITE","size":"8 PC SET","po":"T4-001","ppc":12,"poly":"5061099980432","cartonBarcode":"15061099980439","totalCtns":10,"totalPacks":120,"ctnsIn":8,"packsIn":107},{"sku":"HB-L-TWL-500-IB-33","color":"ICE BLUE","size":"12x12 in","po":"T5-001","ppc":12,"poly":"5061099980043","cartonBarcode":"15061099980040","totalCtns":4,"totalPacks":48,"ctnsIn":0,"packsIn":0},{"sku":"HB-L-TWL-500-IB-47","color":"ICE BLUE","size":"16x28 in","po":"T5-001","ppc":16,"poly":"5061099980050","cartonBarcode":"15061099980057","totalCtns":3,"totalPacks":48,"ctnsIn":0,"packsIn":0},{"sku":"HB-L-TWL-500-IB-61","color":"ICE BLUE","size":"27x54 in","po":"T5-001","ppc":12,"poly":"5061099980067","cartonBarcode":"15061099980064","totalCtns":4,"totalPacks":48,"ctnsIn":0,"packsIn":0},{"sku":"HB-L-TWL-500-IB-8M","color":"ICE BLUE","size":"8 PC SET","po":"T5-001","ppc":8,"poly":"5061099980074","cartonBarcode":"15061099980071","totalCtns":10,"totalPacks":80,"ctnsIn":4,"packsIn":32},{"sku":"HB-L-TWL-500-S-33","color":"SAND","size":"12x12 in","po":"T5-001","ppc":12,"poly":"5061099980128","cartonBarcode":"15061099980125","totalCtns":4,"totalPacks":48,"ctnsIn":0,"packsIn":0},{"sku":"HB-L-TWL-500-S-47","color":"SAND","size":"16x28 in","po":"T5-001","ppc":16,"poly":"5061099980135","cartonBarcode":"15061099980132","totalCtns":3,"totalPacks":48,"ctnsIn":0,"packsIn":0},{"sku":"HB-L-TWL-500-S-61","color":"SAND","size":"27x54 in","po":"T5-001","ppc":12,"poly":"5061099980142","cartonBarcode":"15061099980149","totalCtns":4,"totalPacks":48,"ctnsIn":0,"packsIn":0},{"sku":"HB-L-TWL-500-S-8M","color":"SAND","size":"8 PC SET","po":"T5-001","ppc":8,"poly":"5061099980159","cartonBarcode":"15061099980156","totalCtns":10,"totalPacks":80,"ctnsIn":3,"packsIn":24},{"sku":"HB-L-TWL-500-SG-33","color":"SAGE GREEN","size":"12x12 in","po":"T5-001","ppc":12,"poly":"5061099980104","cartonBarcode":"15061099980101","totalCtns":4,"totalPacks":48,"ctnsIn":0,"packsIn":0},{"sku":"HB-L-TWL-500-SG-47","color":"SAGE GREEN","size":"16x28 in","po":"T5-001","ppc":16,"poly":"5061099980081","cartonBarcode":"15061099980088","totalCtns":5,"totalPacks":80,"ctnsIn":0,"packsIn":0},{"sku":"HB-L-TWL-500-SG-61","color":"SAGE GREEN","size":"27x54 in","po":"T5-001","ppc":12,"poly":"5061099980098","cartonBarcode":"15061099980095","totalCtns":6,"totalPacks":72,"ctnsIn":0,"packsIn":0},{"sku":"HB-L-TWL-500-SG-8M","color":"SAGE GREEN","size":"8 PC SET","po":"T5-001","ppc":8,"poly":"5061099980111","cartonBarcode":"15061099980118","totalCtns":10,"totalPacks":80,"ctnsIn":1,"packsIn":8},{"sku":"HB-L-TWL-500-STN-33","color":"STONE GREY","size":"12x12 in","po":"T5-001","ppc":12,"poly":"5061099980449","cartonBarcode":"15061099980446","totalCtns":7,"totalPacks":84,"ctnsIn":1,"packsIn":17},{"sku":"HB-L-TWL-500-STN-47","color":"STONE GREY","size":"16x28 in","po":"T5-001","ppc":16,"poly":"5061099980456","cartonBarcode":"15061099980453","totalCtns":15,"totalPacks":240,"ctnsIn":10,"packsIn":160},{"sku":"HB-L-TWL-500-STN-61","color":"STONE GREY","size":"27x54 in","po":"T5-001","ppc":12,"poly":"5061099980463","cartonBarcode":"15061099980460","totalCtns":16,"totalPacks":192,"ctnsIn":9,"packsIn":117},{"sku":"HB-L-TWL-500-STN-8M","color":"STONE GREY","size":"8 PC SET","po":"T5-001","ppc":8,"poly":"5061099980470","cartonBarcode":"15061099980477","totalCtns":30,"totalPacks":240,"ctnsIn":22,"packsIn":176},{"sku":"HB-L-TWL-500-VW-33","color":"VELVET WINE","size":"12x12 in","po":"T5-001","ppc":12,"poly":"5061099980166","cartonBarcode":"15061099980163","totalCtns":4,"totalPacks":48,"ctnsIn":0,"packsIn":7},{"sku":"HB-L-TWL-500-VW-47","color":"VELVET WINE","size":"16x28 in","po":"T5-001","ppc":16,"poly":"5061099980173","cartonBarcode":"15061099980170","totalCtns":5,"totalPacks":80,"ctnsIn":1,"packsIn":16},{"sku":"HB-L-TWL-500-VW-61","color":"VELVET WINE","size":"27x54 in","po":"T5-001","ppc":12,"poly":"5061099980180","cartonBarcode":"15061099980187","totalCtns":6,"totalPacks":72,"ctnsIn":0,"packsIn":0},{"sku":"HB-L-TWL-500-VW-8M","color":"VELVET WINE","size":"8 PC SET","po":"T5-001","ppc":8,"poly":"5061099980197","cartonBarcode":"15061099980194","totalCtns":10,"totalPacks":80,"ctnsIn":1,"packsIn":8},{"sku":"HB-L-TWL-500-W-33","color":"WHITE","size":"12x12 in","po":"T5-001","ppc":12,"poly":"5061099980203","cartonBarcode":"15061099980200","totalCtns":4,"totalPacks":48,"ctnsIn":0,"packsIn":0},{"sku":"HB-L-TWL-500-W-47","color":"WHITE","size":"16x28 in","po":"T5-001","ppc":16,"poly":"5061099980210","cartonBarcode":"15061099980217","totalCtns":5,"totalPacks":80,"ctnsIn":1,"packsIn":16},{"sku":"HB-L-TWL-500-W-61","color":"WHITE","size":"27x54 in","po":"T5-001","ppc":12,"poly":"5061099980227","cartonBarcode":"15061099980224","totalCtns":6,"totalPacks":72,"ctnsIn":0,"packsIn":11},{"sku":"HB-L-TWL-500-W-8M","color":"WHITE","size":"8 PC SET","po":"T5-001","ppc":8,"poly":"5061099980234","cartonBarcode":"15061099980231","totalCtns":10,"totalPacks":80,"ctnsIn":3,"packsIn":24},{"sku":"HB-L-TWL-500-DGY-33","color":"DARK GREY","size":"12x12 in","po":"T5-002","ppc":24,"poly":"5061099980005","cartonBarcode":"25061099980009","totalCtns":30,"totalPacks":720,"ctnsIn":0,"packsIn":0},{"sku":"HB-L-TWL-500-NB-33","color":"NAVY BLUE","size":"12x12 in","po":"T5-002","ppc":24,"poly":"5061099980524","cartonBarcode":"25061099980528","totalCtns":15,"totalPacks":360,"ctnsIn":0,"packsIn":0},{"sku":"HB-L-TWL-500-DGY-47","color":"DARK GREY","size":"16x28 in","po":"T5-002","ppc":16,"poly":"5061099980012","cartonBarcode":"15061099980019","totalCtns":61,"totalPacks":976,"ctnsIn":0,"packsIn":0},{"sku":"HB-L-TWL-500-NB-47","color":"NAVY BLUE","size":"16x28 in","po":"T5-002","ppc":16,"poly":"5061099980531","cartonBarcode":"15061099980538","totalCtns":31,"totalPacks":496,"ctnsIn":0,"packsIn":0},{"sku":"HB-L-TWL-500-DGY-61","color":"DARK GREY","size":"27x54 in","po":"T5-002","ppc":12,"poly":"5061099980029","cartonBarcode":"15061099980026","totalCtns":61,"totalPacks":732,"ctnsIn":0,"packsIn":0},{"sku":"HB-L-TWL-500-NB-61","color":"NAVY BLUE","size":"27x54 in","po":"T5-002","ppc":12,"poly":"5061099980548","cartonBarcode":"15061099980545","totalCtns":31,"totalPacks":372,"ctnsIn":0,"packsIn":0},{"sku":"HB-L-TWL-500-DGY-8M","color":"DARK GREY","size":"8 PC SET","po":"T5-002","ppc":8,"poly":"5061099980036","cartonBarcode":"15061099980033","totalCtns":60,"totalPacks":480,"ctnsIn":0,"packsIn":0},{"sku":"HB-L-TWL-500-NB-8M","color":"NAVY BLUE","size":"8 PC SET","po":"T5-002","ppc":8,"poly":"5061099980555","cartonBarcode":"15061099980552","totalCtns":30,"totalPacks":240,"ctnsIn":0,"packsIn":0},{"sku":"NM-TWL-500-A-33","color":"ANTHRAZIT","size":"12x12 in","po":"TWL-500-001","ppc":30,"poly":"4251590101868","cartonBarcode":"4251590116947","totalCtns":20,"totalPacks":600,"ctnsIn":19,"packsIn":592},{"sku":"NM-TWL-500-A-51","color":"ANTHRAZIT","size":"20x40 in","po":"TWL-500-001","ppc":8,"poly":"4260285685750","cartonBarcode":"4251590116961","totalCtns":20,"totalPacks":160,"ctnsIn":17,"packsIn":143},{"sku":"NM-TWL-500-A-71","color":"ANTHRAZIT","size":"27x54 in","po":"TWL-500-001","ppc":12,"poly":"4251590100472","cartonBarcode":"4251590116978","totalCtns":41,"totalPacks":492,"ctnsIn":37,"packsIn":444},{"sku":"NM-TWL-500-BK-33","color":"BLACK","size":"12x12 in","po":"TWL-500-001","ppc":30,"poly":"4251590102001","cartonBarcode":"4251590118293","totalCtns":10,"totalPacks":300,"ctnsIn":7,"packsIn":232},{"sku":"NM-TWL-500-BK-51","color":"BLACK","size":"20x40 in","po":"TWL-500-001","ppc":8,"poly":"4260285685774","cartonBarcode":"4251590118316","totalCtns":10,"totalPacks":80,"ctnsIn":10,"packsIn":80},{"sku":"NM-TWL-500-BK-71","color":"BLACK","size":"27x54 in","po":"TWL-500-001","ppc":12,"poly":"4251590100519","cartonBarcode":"4251590118323","totalCtns":21,"totalPacks":252,"ctnsIn":17,"packsIn":209},{"sku":"NM-TWL-500-NB-33","color":"NAVY BLUE","size":"12x12 in","po":"TWL-500-001","ppc":30,"poly":"4251590101943","cartonBarcode":"4251590117661","totalCtns":10,"totalPacks":300,"ctnsIn":8,"packsIn":267},{"sku":"NM-TWL-500-NB-51","color":"NAVY BLUE","size":"20x40 in","po":"TWL-500-001","ppc":8,"poly":"4260285685873","cartonBarcode":"4251590117685","totalCtns":10,"totalPacks":80,"ctnsIn":8,"packsIn":64},{"sku":"NM-TWL-500-NB-71","color":"NAVY BLUE","size":"27x54 in","po":"TWL-500-001","ppc":12,"poly":"4251590100380","cartonBarcode":"4251590117692","totalCtns":21,"totalPacks":252,"ctnsIn":18,"packsIn":220},{"sku":"NM-TWL-500-S-33","color":"SAND","size":"12x12 in","po":"TWL-500-001","ppc":30,"poly":"4251590101981","cartonBarcode":"4251590118118","totalCtns":10,"totalPacks":300,"ctnsIn":8,"packsIn":266},{"sku":"NM-TWL-500-S-51","color":"SAND","size":"20x40 in","po":"TWL-500-001","ppc":8,"poly":"4260285685811","cartonBarcode":"4251590118132","totalCtns":10,"totalPacks":80,"ctnsIn":7,"packsIn":56},{"sku":"NM-TWL-500-S-71","color":"SAND","size":"27x54 in","po":"TWL-500-001","ppc":12,"poly":"4251590100458","cartonBarcode":"4251590118149","totalCtns":17,"totalPacks":204,"ctnsIn":13,"packsIn":166},{"sku":"NM-TWL-500-W-33","color":"WHITE","size":"12x12 in","po":"TWL-500-001","ppc":30,"poly":"4251590102049","cartonBarcode":"4251590118651","totalCtns":10,"totalPacks":300,"ctnsIn":8,"packsIn":267},{"sku":"NM-TWL-500-W-51","color":"WHITE","size":"20x40 in","po":"TWL-500-001","ppc":8,"poly":"4260285685767","cartonBarcode":"4251590118675","totalCtns":10,"totalPacks":80,"ctnsIn":10,"packsIn":80},{"sku":"NM-TWL-500-W-71","color":"WHITE","size":"27x54 in","po":"TWL-500-001","ppc":12,"poly":"4251590100526","cartonBarcode":"4251590118682","totalCtns":20,"totalPacks":240,"ctnsIn":16,"packsIn":192}];
+// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+const BASE_INV = [{"sku":"GM-TWL-400-A-51","color":"ANTHRAZIT","size":"20x40 in","po":"TWL-400-001","ppc":8,"poly":"4260285685507","cartonBarcode":"4251590118743","totalCtns":20,"totalPacks":160,"ctnsIn":17,"packsIn":143},{"sku":"GM-TWL-400-A-71","color":"ANTHRAZIT","size":"27x54 in","po":"TWL-400-001","ppc":8,"poly":"4260285685606","cartonBarcode":"4251590118750","totalCtns":29,"totalPacks":232,"ctnsIn":26,"packsIn":208},{"sku":"GM-TWL-400-S-51","color":"SAND","size":"20x40 in","po":"TWL-400-001","ppc":8,"poly":"4251590100052","cartonBarcode":"4251590119160","totalCtns":10,"totalPacks":80,"ctnsIn":8,"packsIn":64},{"sku":"GM-TWL-400-S-71","color":"SAND","size":"27x54 in","po":"TWL-400-001","ppc":8,"poly":"4251590100090","cartonBarcode":"4251590119177","totalCtns":19,"totalPacks":152,"ctnsIn":18,"packsIn":151},{"sku":"GM-TWL-400-W-51","color":"WHITE","size":"20x40 in","po":"TWL-400-001","ppc":8,"poly":"4260285685491","cartonBarcode":"4251590119344","totalCtns":20,"totalPacks":160,"ctnsIn":17,"packsIn":143},{"sku":"GM-TWL-400-W-71","color":"WHITE","size":"27x54 in","po":"TWL-400-001","ppc":8,"poly":"4260285685590","cartonBarcode":"4251590119351","totalCtns":30,"totalPacks":240,"ctnsIn":28,"packsIn":224},{"sku":"HB-C-TWL-400-DR-33","color":"DUNE RED","size":"12x12 in","po":"T4-001","ppc":24,"poly":"5061099980241","cartonBarcode":"15061099980248","totalCtns":4,"totalPacks":96,"ctnsIn":3,"packsIn":72},{"sku":"HB-C-TWL-400-DR-46","color":"DUNE RED","size":"16x24 in","po":"T4-001","ppc":24,"poly":"5061099980258","cartonBarcode":"15061099980255","totalCtns":8,"totalPacks":192,"ctnsIn":7,"packsIn":188},{"sku":"HB-C-TWL-400-DR-61","color":"DUNE RED","size":"27x54 in","po":"T4-001","ppc":8,"poly":"5061099980265","cartonBarcode":"15061099980262","totalCtns":8,"totalPacks":64,"ctnsIn":5,"packsIn":47},{"sku":"HB-C-TWL-400-DR-8M","color":"DUNE RED","size":"8 PC SET","po":"T4-001","ppc":12,"poly":"5061099980272","cartonBarcode":"15061099980279","totalCtns":5,"totalPacks":60,"ctnsIn":3,"packsIn":46},{"sku":"HB-C-TWL-400-MG-33","color":"MOSS GREEN","size":"12x12 in","po":"T4-001","ppc":24,"poly":"5061099980289","cartonBarcode":"15061099980286","totalCtns":4,"totalPacks":96,"ctnsIn":2,"packsIn":71},{"sku":"HB-C-TWL-400-MG-46","color":"MOSS GREEN","size":"16x24 in","po":"T4-001","ppc":24,"poly":"5061099980296","cartonBarcode":"15061099980293","totalCtns":10,"totalPacks":240,"ctnsIn":7,"packsIn":186},{"sku":"HB-C-TWL-400-MG-61","color":"MOSS GREEN","size":"27x54 in","po":"T4-001","ppc":8,"poly":"5061099980302","cartonBarcode":"15061099980309","totalCtns":10,"totalPacks":80,"ctnsIn":7,"packsIn":56},{"sku":"HB-C-TWL-400-MG-8M","color":"MOSS GREEN","size":"8 PC SET","po":"T4-001","ppc":12,"poly":"5061099980319","cartonBarcode":"15061099980316","totalCtns":10,"totalPacks":120,"ctnsIn":8,"packsIn":105},{"sku":"HB-C-TWL-400-SGY-33","color":"STEEL GREY","size":"12x12 in","po":"T4-001","ppc":24,"poly":"5061099980326","cartonBarcode":"15061099980323","totalCtns":9,"totalPacks":216,"ctnsIn":8,"packsIn":192},{"sku":"HB-C-TWL-400-SGY-46","color":"STEEL GREY","size":"16x24 in","po":"T4-001","ppc":24,"poly":"5061099980333","cartonBarcode":"15061099980330","totalCtns":30,"totalPacks":720,"ctnsIn":28,"packsIn":687},{"sku":"HB-C-TWL-400-SGY-61","color":"STEEL GREY","size":"27x54 in","po":"T4-001","ppc":8,"poly":"5061099980340","cartonBarcode":"15061099980347","totalCtns":30,"totalPacks":240,"ctnsIn":26,"packsIn":212},{"sku":"HB-C-TWL-400-SGY-8M","color":"STEEL GREY","size":"8 PC SET","po":"T4-001","ppc":12,"poly":"5061099980357","cartonBarcode":"15061099980354","totalCtns":10,"totalPacks":120,"ctnsIn":7,"packsIn":92},{"sku":"HB-C-TWL-400-ST-33","color":"SOFT TEAL","size":"12x12 in","po":"T4-001","ppc":24,"poly":"5061099980364","cartonBarcode":"15061099980361","totalCtns":4,"totalPacks":96,"ctnsIn":1,"packsIn":24},{"sku":"HB-C-TWL-400-ST-46","color":"SOFT TEAL","size":"16x24 in","po":"T4-001","ppc":24,"poly":"5061099980371","cartonBarcode":"15061099980378","totalCtns":8,"totalPacks":192,"ctnsIn":6,"packsIn":166},{"sku":"HB-C-TWL-400-ST-61","color":"SOFT TEAL","size":"27x54 in","po":"T4-001","ppc":8,"poly":"5061099980388","cartonBarcode":"15061099980385","totalCtns":8,"totalPacks":64,"ctnsIn":5,"packsIn":40},{"sku":"HB-C-TWL-400-ST-8M","color":"SOFT TEAL","size":"8 PC SET","po":"T4-001","ppc":12,"poly":"5061099980395","cartonBarcode":"15061099980392","totalCtns":5,"totalPacks":60,"ctnsIn":4,"packsIn":48},{"sku":"HB-C-TWL-400-W-33","color":"WHITE","size":"12x12 in","po":"T4-001","ppc":24,"poly":"5061099980401","cartonBarcode":"15061099980408","totalCtns":4,"totalPacks":96,"ctnsIn":2,"packsIn":63},{"sku":"HB-C-TWL-400-W-46","color":"WHITE","size":"16x24 in","po":"T4-001","ppc":24,"poly":"5061099980418","cartonBarcode":"15061099980415","totalCtns":10,"totalPacks":240,"ctnsIn":8,"packsIn":210},{"sku":"HB-C-TWL-400-W-61","color":"WHITE","size":"27x54 in","po":"T4-001","ppc":8,"poly":"5061099980425","cartonBarcode":"15061099980422","totalCtns":10,"totalPacks":80,"ctnsIn":7,"packsIn":63},{"sku":"HB-C-TWL-400-W-8M","color":"WHITE","size":"8 PC SET","po":"T4-001","ppc":12,"poly":"5061099980432","cartonBarcode":"15061099980439","totalCtns":10,"totalPacks":120,"ctnsIn":8,"packsIn":107},{"sku":"HB-L-TWL-500-IB-33","color":"ICE BLUE","size":"12x12 in","po":"T5-001","ppc":12,"poly":"5061099980043","cartonBarcode":"15061099980040","totalCtns":4,"totalPacks":48,"ctnsIn":0,"packsIn":0},{"sku":"HB-L-TWL-500-IB-47","color":"ICE BLUE","size":"16x28 in","po":"T5-001","ppc":16,"poly":"5061099980050","cartonBarcode":"15061099980057","totalCtns":3,"totalPacks":48,"ctnsIn":0,"packsIn":0},{"sku":"HB-L-TWL-500-IB-61","color":"ICE BLUE","size":"27x54 in","po":"T5-001","ppc":12,"poly":"5061099980067","cartonBarcode":"15061099980064","totalCtns":4,"totalPacks":48,"ctnsIn":0,"packsIn":0},{"sku":"HB-L-TWL-500-IB-8M","color":"ICE BLUE","size":"8 PC SET","po":"T5-001","ppc":8,"poly":"5061099980074","cartonBarcode":"15061099980071","totalCtns":10,"totalPacks":80,"ctnsIn":4,"packsIn":32},{"sku":"HB-L-TWL-500-S-33","color":"SAND","size":"12x12 in","po":"T5-001","ppc":12,"poly":"5061099980128","cartonBarcode":"15061099980125","totalCtns":4,"totalPacks":48,"ctnsIn":0,"packsIn":0},{"sku":"HB-L-TWL-500-S-47","color":"SAND","size":"16x28 in","po":"T5-001","ppc":16,"poly":"5061099980135","cartonBarcode":"15061099980132","totalCtns":3,"totalPacks":48,"ctnsIn":0,"packsIn":0},{"sku":"HB-L-TWL-500-S-61","color":"SAND","size":"27x54 in","po":"T5-001","ppc":12,"poly":"5061099980142","cartonBarcode":"15061099980149","totalCtns":4,"totalPacks":48,"ctnsIn":0,"packsIn":0},{"sku":"HB-L-TWL-500-S-8M","color":"SAND","size":"8 PC SET","po":"T5-001","ppc":8,"poly":"5061099980159","cartonBarcode":"15061099980156","totalCtns":10,"totalPacks":80,"ctnsIn":3,"packsIn":24},{"sku":"HB-L-TWL-500-SG-33","color":"SAGE GREEN","size":"12x12 in","po":"T5-001","ppc":12,"poly":"5061099980104","cartonBarcode":"15061099980101","totalCtns":4,"totalPacks":48,"ctnsIn":0,"packsIn":0},{"sku":"HB-L-TWL-500-SG-47","color":"SAGE GREEN","size":"16x28 in","po":"T5-001","ppc":16,"poly":"5061099980081","cartonBarcode":"15061099980088","totalCtns":5,"totalPacks":80,"ctnsIn":0,"packsIn":0},{"sku":"HB-L-TWL-500-SG-61","color":"SAGE GREEN","size":"27x54 in","po":"T5-001","ppc":12,"poly":"5061099980098","cartonBarcode":"15061099980095","totalCtns":6,"totalPacks":72,"ctnsIn":0,"packsIn":0},{"sku":"HB-L-TWL-500-SG-8M","color":"SAGE GREEN","size":"8 PC SET","po":"T5-001","ppc":8,"poly":"5061099980111","cartonBarcode":"15061099980118","totalCtns":10,"totalPacks":80,"ctnsIn":1,"packsIn":8},{"sku":"HB-L-TWL-500-STN-33","color":"STONE GREY","size":"12x12 in","po":"T5-001","ppc":12,"poly":"5061099980449","cartonBarcode":"15061099980446","totalCtns":7,"totalPacks":84,"ctnsIn":1,"packsIn":17},{"sku":"HB-L-TWL-500-STN-47","color":"STONE GREY","size":"16x28 in","po":"T5-001","ppc":16,"poly":"5061099980456","cartonBarcode":"15061099980453","totalCtns":15,"totalPacks":240,"ctnsIn":10,"packsIn":160},{"sku":"HB-L-TWL-500-STN-61","color":"STONE GREY","size":"27x54 in","po":"T5-001","ppc":12,"poly":"5061099980463","cartonBarcode":"15061099980460","totalCtns":16,"totalPacks":192,"ctnsIn":9,"packsIn":117},{"sku":"HB-L-TWL-500-STN-8M","color":"STONE GREY","size":"8 PC SET","po":"T5-001","ppc":8,"poly":"5061099980470","cartonBarcode":"15061099980477","totalCtns":30,"totalPacks":240,"ctnsIn":22,"packsIn":176},{"sku":"HB-L-TWL-500-VW-33","color":"VELVET WINE","size":"12x12 in","po":"T5-001","ppc":12,"poly":"5061099980166","cartonBarcode":"15061099980163","totalCtns":4,"totalPacks":48,"ctnsIn":0,"packsIn":7},{"sku":"HB-L-TWL-500-VW-47","color":"VELVET WINE","size":"16x28 in","po":"T5-001","ppc":16,"poly":"5061099980173","cartonBarcode":"15061099980170","totalCtns":5,"totalPacks":80,"ctnsIn":1,"packsIn":16},{"sku":"HB-L-TWL-500-VW-61","color":"VELVET WINE","size":"27x54 in","po":"T5-001","ppc":12,"poly":"5061099980180","cartonBarcode":"15061099980187","totalCtns":6,"totalPacks":72,"ctnsIn":0,"packsIn":0},{"sku":"HB-L-TWL-500-VW-8M","color":"VELVET WINE","size":"8 PC SET","po":"T5-001","ppc":8,"poly":"5061099980197","cartonBarcode":"15061099980194","totalCtns":10,"totalPacks":80,"ctnsIn":1,"packsIn":8},{"sku":"HB-L-TWL-500-W-33","color":"WHITE","size":"12x12 in","po":"T5-001","ppc":12,"poly":"5061099980203","cartonBarcode":"15061099980200","totalCtns":4,"totalPacks":48,"ctnsIn":0,"packsIn":0},{"sku":"HB-L-TWL-500-W-47","color":"WHITE","size":"16x28 in","po":"T5-001","ppc":16,"poly":"5061099980210","cartonBarcode":"15061099980217","totalCtns":5,"totalPacks":80,"ctnsIn":1,"packsIn":16},{"sku":"HB-L-TWL-500-W-61","color":"WHITE","size":"27x54 in","po":"T5-001","ppc":12,"poly":"5061099980227","cartonBarcode":"15061099980224","totalCtns":6,"totalPacks":72,"ctnsIn":0,"packsIn":11},{"sku":"HB-L-TWL-500-W-8M","color":"WHITE","size":"8 PC SET","po":"T5-001","ppc":8,"poly":"5061099980234","cartonBarcode":"15061099980231","totalCtns":10,"totalPacks":80,"ctnsIn":3,"packsIn":24},{"sku":"NM-TWL-500-A-33","color":"ANTHRAZIT","size":"12x12 in","po":"TWL-500-001","ppc":30,"poly":"4251590101868","cartonBarcode":"4251590116947","totalCtns":20,"totalPacks":600,"ctnsIn":19,"packsIn":592},{"sku":"NM-TWL-500-A-51","color":"ANTHRAZIT","size":"20x40 in","po":"TWL-500-001","ppc":8,"poly":"4260285685750","cartonBarcode":"4251590116961","totalCtns":20,"totalPacks":160,"ctnsIn":17,"packsIn":143},{"sku":"NM-TWL-500-A-71","color":"ANTHRAZIT","size":"27x54 in","po":"TWL-500-001","ppc":12,"poly":"4251590100472","cartonBarcode":"4251590116978","totalCtns":41,"totalPacks":492,"ctnsIn":37,"packsIn":444},{"sku":"NM-TWL-500-BK-33","color":"BLACK","size":"12x12 in","po":"TWL-500-001","ppc":30,"poly":"4251590102001","cartonBarcode":"4251590118293","totalCtns":10,"totalPacks":300,"ctnsIn":7,"packsIn":232},{"sku":"NM-TWL-500-BK-51","color":"BLACK","size":"20x40 in","po":"TWL-500-001","ppc":8,"poly":"4260285685774","cartonBarcode":"4251590118316","totalCtns":10,"totalPacks":80,"ctnsIn":10,"packsIn":80},{"sku":"NM-TWL-500-BK-71","color":"BLACK","size":"27x54 in","po":"TWL-500-001","ppc":12,"poly":"4251590100519","cartonBarcode":"4251590118323","totalCtns":21,"totalPacks":252,"ctnsIn":17,"packsIn":209},{"sku":"NM-TWL-500-NB-33","color":"NAVY BLUE","size":"12x12 in","po":"TWL-500-001","ppc":30,"poly":"4251590101943","cartonBarcode":"4251590117661","totalCtns":10,"totalPacks":300,"ctnsIn":8,"packsIn":267},{"sku":"NM-TWL-500-NB-51","color":"NAVY BLUE","size":"20x40 in","po":"TWL-500-001","ppc":8,"poly":"4260285685873","cartonBarcode":"4251590117685","totalCtns":10,"totalPacks":80,"ctnsIn":8,"packsIn":64},{"sku":"NM-TWL-500-NB-71","color":"NAVY BLUE","size":"27x54 in","po":"TWL-500-001","ppc":12,"poly":"4251590100380","cartonBarcode":"4251590117692","totalCtns":21,"totalPacks":252,"ctnsIn":18,"packsIn":220},{"sku":"NM-TWL-500-S-33","color":"SAND","size":"12x12 in","po":"TWL-500-001","ppc":30,"poly":"4251590101981","cartonBarcode":"4251590118118","totalCtns":10,"totalPacks":300,"ctnsIn":8,"packsIn":266},{"sku":"NM-TWL-500-S-51","color":"SAND","size":"20x40 in","po":"TWL-500-001","ppc":8,"poly":"4260285685811","cartonBarcode":"4251590118132","totalCtns":10,"totalPacks":80,"ctnsIn":7,"packsIn":56},{"sku":"NM-TWL-500-S-71","color":"SAND","size":"27x54 in","po":"TWL-500-001","ppc":12,"poly":"4251590100458","cartonBarcode":"4251590118149","totalCtns":17,"totalPacks":204,"ctnsIn":13,"packsIn":166},{"sku":"NM-TWL-500-W-33","color":"WHITE","size":"12x12 in","po":"TWL-500-001","ppc":30,"poly":"4251590102049","cartonBarcode":"4251590118651","totalCtns":10,"totalPacks":300,"ctnsIn":8,"packsIn":267},{"sku":"NM-TWL-500-W-51","color":"WHITE","size":"20x40 in","po":"TWL-500-001","ppc":8,"poly":"4260285685767","cartonBarcode":"4251590118675","totalCtns":10,"totalPacks":80,"ctnsIn":10,"packsIn":80},{"sku":"NM-TWL-500-W-71","color":"WHITE","size":"27x54 in","po":"TWL-500-001","ppc":12,"poly":"4251590100526","cartonBarcode":"4251590118682","totalCtns":20,"totalPacks":240,"ctnsIn":16,"packsIn":192}];
 
 let PALLET_DATA = {"1":{"NM-TWL-500-NB-33":{"fullCartons":8,"openPacks":27,"ppc":30,"color":"NAVY BLUE","size":"12x12 in","po":"TWL-500-001"}},"2":{"NM-TWL-500-S-33":{"fullCartons":8,"openPacks":26,"ppc":30,"color":"SAND","size":"12x12 in","po":"TWL-500-001"}},"3":{"NM-TWL-500-NB-71":{"fullCartons":17,"openPacks":4,"ppc":12,"color":"NAVY BLUE","size":"27x54 in","po":"TWL-500-001"}},"4":{"NM-TWL-500-S-71":{"fullCartons":13,"openPacks":10,"ppc":12,"color":"SAND","size":"27x54 in","po":"TWL-500-001"},"NM-TWL-500-NB-71":{"fullCartons":1,"openPacks":0,"ppc":12,"color":"NAVY BLUE","size":"27x54 in","po":"TWL-500-001"},"NM-TWL-500-A-71":{"fullCartons":1,"openPacks":0,"ppc":12,"color":"ANTHRAZIT","size":"27x54 in","po":"TWL-500-001"},"NM-TWL-500-W-71":{"fullCartons":1,"openPacks":0,"ppc":12,"color":"WHITE","size":"27x54 in","po":"TWL-500-001"}},"5":{"NM-TWL-500-NB-51":{"fullCartons":8,"openPacks":0,"ppc":8,"color":"NAVY BLUE","size":"20x40 in","po":"TWL-500-001"}},"6":{"NM-TWL-500-S-51":{"fullCartons":7,"openPacks":0,"ppc":8,"color":"SAND","size":"20x40 in","po":"TWL-500-001"}},"7":{"NM-TWL-500-A-33":{"fullCartons":14,"openPacks":0,"ppc":30,"color":"ANTHRAZIT","size":"12x12 in","po":"TWL-500-001"}},"8":{"NM-TWL-500-A-33":{"fullCartons":5,"openPacks":22,"ppc":30,"color":"ANTHRAZIT","size":"12x12 in","po":"TWL-500-001"}},"9":{"NM-TWL-500-A-71":{"fullCartons":18,"openPacks":0,"ppc":12,"color":"ANTHRAZIT","size":"27x54 in","po":"TWL-500-001"}},"10":{"NM-TWL-500-A-71":{"fullCartons":18,"openPacks":0,"ppc":12,"color":"ANTHRAZIT","size":"27x54 in","po":"TWL-500-001"}},"11":{"NM-TWL-500-A-51":{"fullCartons":12,"openPacks":0,"ppc":8,"color":"ANTHRAZIT","size":"20x40 in","po":"TWL-500-001"}},"12":{"NM-TWL-500-A-51":{"fullCartons":5,"openPacks":7,"ppc":8,"color":"ANTHRAZIT","size":"20x40 in","po":"TWL-500-001"}},"13":{"NM-TWL-500-W-33":{"fullCartons":8,"openPacks":27,"ppc":30,"color":"WHITE","size":"12x12 in","po":"TWL-500-001"}},"14":{"NM-TWL-500-BK-33":{"fullCartons":7,"openPacks":22,"ppc":30,"color":"BLACK","size":"12x12 in","po":"TWL-500-001"}},"15":{"NM-TWL-500-W-71":{"fullCartons":15,"openPacks":0,"ppc":12,"color":"WHITE","size":"27x54 in","po":"TWL-500-001"}},"16":{"NM-TWL-500-BK-71":{"fullCartons":17,"openPacks":5,"ppc":12,"color":"BLACK","size":"27x54 in","po":"TWL-500-001"}},"17":{"NM-TWL-500-W-51":{"fullCartons":10,"openPacks":0,"ppc":8,"color":"WHITE","size":"20x40 in","po":"TWL-500-001"}},"18":{"NM-TWL-500-BK-51":{"fullCartons":10,"openPacks":0,"ppc":8,"color":"BLACK","size":"20x40 in","po":"TWL-500-001"}},"19":{"HB-C-TWL-400-DR-61":{"fullCartons":4,"openPacks":7,"ppc":8,"color":"DUNE RED","size":"27x54 in","po":"T4-001"},"HB-C-TWL-400-MG-61":{"fullCartons":3,"openPacks":0,"ppc":8,"color":"MOSS GREEN","size":"27x54 in","po":"T4-001"},"HB-C-TWL-400-SGY-61":{"fullCartons":11,"openPacks":4,"ppc":8,"color":"STEEL GREY","size":"27x54 in","po":"T4-001"},"HB-C-TWL-400-W-61":{"fullCartons":2,"openPacks":7,"ppc":8,"color":"WHITE","size":"27x54 in","po":"T4-001"},"HB-C-TWL-400-ST-61":{"fullCartons":3,"openPacks":0,"ppc":8,"color":"SOFT TEAL","size":"27x54 in","po":"T4-001"}},"20":{"HB-C-TWL-400-W-61":{"fullCartons":5,"openPacks":0,"ppc":8,"color":"WHITE","size":"27x54 in","po":"T4-001"},"HB-C-TWL-400-MG-61":{"fullCartons":4,"openPacks":0,"ppc":8,"color":"MOSS GREEN","size":"27x54 in","po":"T4-001"},"HB-C-TWL-400-SGY-61":{"fullCartons":15,"openPacks":0,"ppc":8,"color":"STEEL GREY","size":"27x54 in","po":"T4-001"},"HB-C-TWL-400-ST-61":{"fullCartons":2,"openPacks":0,"ppc":8,"color":"SOFT TEAL","size":"27x54 in","po":"T4-001"}},"21":{"HB-C-TWL-400-SGY-46":{"fullCartons":15,"openPacks":0,"ppc":24,"color":"STEEL GREY","size":"16x24 in","po":"T4-001"},"HB-C-TWL-400-MG-46":{"fullCartons":1,"openPacks":0,"ppc":24,"color":"MOSS GREEN","size":"16x24 in","po":"T4-001"},"HB-C-TWL-400-ST-46":{"fullCartons":3,"openPacks":0,"ppc":24,"color":"SOFT TEAL","size":"16x24 in","po":"T4-001"},"HB-C-TWL-400-W-46":{"fullCartons":1,"openPacks":0,"ppc":24,"color":"WHITE","size":"16x24 in","po":"T4-001"}},"22":{"HB-C-TWL-400-DR-46":{"fullCartons":3,"openPacks":20,"ppc":24,"color":"DUNE RED","size":"16x24 in","po":"T4-001"},"HB-C-TWL-400-ST-46":{"fullCartons":1,"openPacks":22,"ppc":24,"color":"SOFT TEAL","size":"16x24 in","po":"T4-001"},"HB-C-TWL-400-W-46":{"fullCartons":3,"openPacks":18,"ppc":24,"color":"WHITE","size":"16x24 in","po":"T4-001"},"HB-C-TWL-400-SGY-46":{"fullCartons":5,"openPacks":15,"ppc":24,"color":"STEEL GREY","size":"16x24 in","po":"T4-001"},"HB-C-TWL-400-MG-46":{"fullCartons":3,"openPacks":18,"ppc":24,"color":"MOSS GREEN","size":"16x24 in","po":"T4-001"}},"23":{"HB-C-TWL-400-MG-8M":{"fullCartons":5,"openPacks":9,"ppc":12,"color":"MOSS GREEN","size":"8 PC SET","po":"T4-001"},"HB-C-TWL-400-W-8M":{"fullCartons":6,"openPacks":11,"ppc":12,"color":"WHITE","size":"8 PC SET","po":"T4-001"},"HB-C-TWL-400-SGY-8M":{"fullCartons":1,"openPacks":8,"ppc":12,"color":"STEEL GREY","size":"8 PC SET","po":"T4-001"},"HB-C-TWL-400-DR-8M":{"fullCartons":0,"openPacks":10,"ppc":12,"color":"DUNE RED","size":"8 PC SET","po":"T4-001"}},"24":{"HB-C-TWL-400-DR-8M":{"fullCartons":3,"openPacks":0,"ppc":12,"color":"DUNE RED","size":"8 PC SET","po":"T4-001"},"HB-C-TWL-400-W-8M":{"fullCartons":2,"openPacks":0,"ppc":12,"color":"WHITE","size":"8 PC SET","po":"T4-001"},"HB-C-TWL-400-SGY-8M":{"fullCartons":6,"openPacks":0,"ppc":12,"color":"STEEL GREY","size":"8 PC SET","po":"T4-001"},"HB-C-TWL-400-MG-8M":{"fullCartons":3,"openPacks":0,"ppc":12,"color":"MOSS GREEN","size":"8 PC SET","po":"T4-001"},"HB-C-TWL-400-ST-8M":{"fullCartons":3,"openPacks":0,"ppc":12,"color":"SOFT TEAL","size":"8 PC SET","po":"T4-001"}},"25":{"GM-TWL-400-W-71":{"fullCartons":28,"openPacks":0,"ppc":8,"color":"WHITE","size":"27x54 in","po":"TWL-400-001"}},"26":{"GM-TWL-400-S-71":{"fullCartons":18,"openPacks":7,"ppc":8,"color":"SAND","size":"27x54 in","po":"TWL-400-001"}},"27":{"GM-TWL-400-A-71":{"fullCartons":26,"openPacks":0,"ppc":8,"color":"ANTHRAZIT","size":"27x54 in","po":"TWL-400-001"}},"28":{"GM-TWL-400-W-51":{"fullCartons":16,"openPacks":0,"ppc":8,"color":"WHITE","size":"20x40 in","po":"TWL-400-001"}},"29":{"GM-TWL-400-S-51":{"fullCartons":8,"openPacks":0,"ppc":8,"color":"SAND","size":"20x40 in","po":"TWL-400-001"},"GM-TWL-400-W-51":{"fullCartons":1,"openPacks":7,"ppc":8,"color":"WHITE","size":"20x40 in","po":"TWL-400-001"},"GM-TWL-400-A-51":{"fullCartons":1,"openPacks":7,"ppc":8,"color":"ANTHRAZIT","size":"20x40 in","po":"TWL-400-001"}},"30":{"GM-TWL-400-A-51":{"fullCartons":16,"openPacks":0,"ppc":8,"color":"ANTHRAZIT","size":"20x40 in","po":"TWL-400-001"}},"33":{"HB-L-TWL-500-S-8M":{"fullCartons":3,"openPacks":0,"ppc":8,"color":"SAND","size":"8 PC SET","po":"T5-001"},"HB-L-TWL-500-STN-8M":{"fullCartons":10,"openPacks":0,"ppc":8,"color":"STONE GREY","size":"8 PC SET","po":"T5-001"},"HB-C-TWL-400-ST-8M":{"fullCartons":1,"openPacks":0,"ppc":12,"color":"SOFT TEAL","size":"8 PC SET","po":"T4-001"},"HB-C-TWL-400-DR-61":{"fullCartons":1,"openPacks":0,"ppc":8,"color":"DUNE RED","size":"27x54 in","po":"T4-001"},"HB-L-TWL-500-VW-8M":{"fullCartons":1,"openPacks":0,"ppc":8,"color":"VELVET WINE","size":"8 PC SET","po":"T5-001"},"HB-L-TWL-500-W-8M":{"fullCartons":1,"openPacks":0,"ppc":8,"color":"WHITE","size":"8 PC SET","po":"T5-001"},"HB-L-TWL-500-SG-8M":{"fullCartons":1,"openPacks":0,"ppc":8,"color":"SAGE GREEN","size":"8 PC SET","po":"T5-001"}},"34":{"HB-L-TWL-500-IB-8M":{"fullCartons":4,"openPacks":0,"ppc":8,"color":"ICE BLUE","size":"8 PC SET","po":"T5-001"},"HB-L-TWL-500-STN-8M":{"fullCartons":12,"openPacks":0,"ppc":8,"color":"STONE GREY","size":"8 PC SET","po":"T5-001"},"HB-L-TWL-500-W-8M":{"fullCartons":2,"openPacks":0,"ppc":8,"color":"WHITE","size":"8 PC SET","po":"T5-001"}},"35":{"HB-L-TWL-500-STN-47":{"fullCartons":10,"openPacks":0,"ppc":16,"color":"STONE GREY","size":"16x28 in","po":"T5-001"},"HB-L-TWL-500-W-47":{"fullCartons":1,"openPacks":0,"ppc":16,"color":"WHITE","size":"16x28 in","po":"T5-001"},"HB-L-TWL-500-VW-47":{"fullCartons":1,"openPacks":0,"ppc":16,"color":"VELVET WINE","size":"16x28 in","po":"T5-001"},"HB-L-TWL-500-STN-33":{"fullCartons":1,"openPacks":5,"ppc":12,"color":"STONE GREY","size":"12x12 in","po":"T5-001"},"HB-L-TWL-500-VW-33":{"fullCartons":0,"openPacks":7,"ppc":12,"color":"VELVET WINE","size":"12x12 in","po":"T5-001"}},"36":{"HB-L-TWL-500-STN-61":{"fullCartons":9,"openPacks":9,"ppc":12,"color":"STONE GREY","size":"27x54 in","po":"T5-001"},"HB-L-TWL-500-W-61":{"fullCartons":0,"openPacks":11,"ppc":12,"color":"WHITE","size":"27x54 in","po":"T5-001"}},"51":{"HB-C-TWL-400-SGY-33":{"fullCartons":8,"openPacks":0,"ppc":24,"color":"STEEL GREY","size":"12x12 in","po":"T4-001"},"HB-C-TWL-400-DR-33":{"fullCartons":3,"openPacks":0,"ppc":24,"color":"DUNE RED","size":"12x12 in","po":"T4-001"},"HB-C-TWL-400-W-33":{"fullCartons":2,"openPacks":15,"ppc":24,"color":"WHITE","size":"12x12 in","po":"T4-001"},"HB-C-TWL-400-ST-33":{"fullCartons":1,"openPacks":0,"ppc":24,"color":"SOFT TEAL","size":"12x12 in","po":"T4-001"},"HB-C-TWL-400-MG-33":{"fullCartons":2,"openPacks":23,"ppc":24,"color":"MOSS GREEN","size":"12x12 in","po":"T4-001"}},"52":{"HB-C-TWL-400-DR-46":{"fullCartons":4,"openPacks":0,"ppc":24,"color":"DUNE RED","size":"16x24 in","po":"T4-001"},"HB-C-TWL-400-SGY-46":{"fullCartons":8,"openPacks":0,"ppc":24,"color":"STEEL GREY","size":"16x24 in","po":"T4-001"},"HB-C-TWL-400-MG-46":{"fullCartons":3,"openPacks":0,"ppc":24,"color":"MOSS GREEN","size":"16x24 in","po":"T4-001"},"HB-C-TWL-400-W-46":{"fullCartons":4,"openPacks":0,"ppc":24,"color":"WHITE","size":"16x24 in","po":"T4-001"},"HB-C-TWL-400-ST-46":{"fullCartons":2,"openPacks":0,"ppc":24,"color":"SOFT TEAL","size":"16x24 in","po":"T4-001"}}};
 window._PALLET_DATA_ORIG = JSON.parse(JSON.stringify(PALLET_DATA));
 
-// ══════════════════════════════════════════════════════════════════
+// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 // STATE
-// ══════════════════════════════════════════════════════════════════
+// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 let inventory = [];
 let livePickLog = [];
 var seenIds = new Set(); // tracks all Supabase IDs we've seen to prevent poll duplicates
@@ -560,9 +559,9 @@ let invFilter = '';
 let invPO = '';
 let invStatus = '';
 
-// ══════════════════════════════════════════════════════════════════
+// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 // INIT
-// ══════════════════════════════════════════════════════════════════
+// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 async function init() {
   showSyncStatus('connecting');
 
@@ -659,7 +658,7 @@ async function init() {
         livePickLog.unshift(entry);
         txLog.unshift(entry);
         added = true;
-        toast('🔄 ' + r.sku + ' picked by team', 'info');
+        toast('ð ' + r.sku + ' picked by team', 'info');
       });
       if (added) {
         buildInventory();
@@ -724,7 +723,7 @@ function buildInventory() {
         slot.fullCartons -= 1;          // remove from sealed
         slot.openPacks = (slot.openPacks || 0) + (ppc - rem);  // leftover stays as open
         rem = 0;
-        // fullCartons count DOES decrease by 1 here — a carton was physically opened
+        // fullCartons count DOES decrease by 1 here â a carton was physically opened
       }
     }
   }
@@ -779,9 +778,9 @@ function renderAll() {
   renderReport();
 }
 
-// ══════════════════════════════════════════════════════════════════
+// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 // NAV
-// ══════════════════════════════════════════════════════════════════
+// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function switchPage(p) {
   document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.nav-btn[data-page]').forEach(b => b.classList.remove('active'));
@@ -789,9 +788,9 @@ function switchPage(p) {
   document.querySelector(`.nav-btn[data-page="${p}"]`).classList.add('active');
 }
 
-// ══════════════════════════════════════════════════════════════════
+// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 // STATUS / HELPERS
-// ══════════════════════════════════════════════════════════════════
+// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function getStatus(s) {
   if (s.packs === 0) return 'out';
   if (s.packs <= s.ppc * 2 || s.ctns <= 1) return 'critical';
@@ -823,9 +822,9 @@ function populatePalletSelect() {
   });
 }
 
-// ══════════════════════════════════════════════════════════════════
+// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 // STATS
-// ══════════════════════════════════════════════════════════════════
+// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function renderStats() {
   const totalPacks = inventory.reduce((a,s) => a + s.packs, 0);
   const totalCtns  = inventory.reduce((a,s) => a + s.ctns,  0);
@@ -854,9 +853,9 @@ function renderStats() {
     '<div class="stat purple"><div class="sv">' + todayOut + '</div><div class="sl">Today Out</div></div>';
 }
 
-// ══════════════════════════════════════════════════════════════════
+// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 // INVENTORY TABLE
-// ══════════════════════════════════════════════════════════════════
+// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function sortInv(k) {
   invSort.d = invSort.k === k ? -invSort.d : 1;
   invSort.k = k;
@@ -883,13 +882,13 @@ function renderInventory() {
     let openPacks = 0;
     Object.values(PALLET_DATA).forEach(pd => { if (pd[s.sku]) openPacks += pd[s.sku].openPacks||0; });
     return `<tr>
-      <td><div class="sku-name">${s.sku}</div><div class="sku-meta">${s.poly} · ${s.cartonBarcode}</div></td>
+      <td><div class="sku-name">${s.sku}</div><div class="sku-meta">${s.poly} Â· ${s.cartonBarcode}</div></td>
       <td>${s.color}</td>
       <td>${s.size}</td>
       <td><span class="chip chip-blue">${s.po}</span></td>
       <td>
         <div class="pack-val">${s.packs.toLocaleString()}</div>
-        <div class="pack-sub">${s.ctns} sealed${openPacks>0?` · <span style='color:var(--yellow)'>${openPacks} loose (open ctn)</span>`:''}</div>
+        <div class="pack-sub">${s.ctns} sealed${openPacks>0?` Â· <span style='color:var(--yellow)'>${openPacks} loose (open ctn)</span>`:''}</div>
         <div class="prog-bar"><div class="prog-fill ${statusProg[st]}" style="width:${pct}%"></div></div>
       </td>
       <td style="font-weight:700">${s.ctns}</td>
@@ -907,9 +906,9 @@ function quickPickSKU(sku) {
   document.getElementById('pick-qty').focus();
 }
 
-// ══════════════════════════════════════════════════════════════════
+// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 // PALLETS
-// ══════════════════════════════════════════════════════════════════
+// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function renderPallets(q='') {
   q = q.toLowerCase();
   const nums = Object.keys(PALLET_DATA).map(Number).sort((a,b)=>a-b);
@@ -929,25 +928,25 @@ function renderPallets(q='') {
     const rows = active.map(([sku,v]) => {
       const packs = v.fullCartons * v.ppc + v.openPacks;
       return `<div class="pcard-row">
-        <div><div class="pcard-sku">${sku}</div><div class="pcard-meta">${v.color} · ${v.size}</div></div>
+        <div><div class="pcard-sku">${sku}</div><div class="pcard-meta">${v.color} Â· ${v.size}</div></div>
         <div class="pcard-qty">
           ${v.fullCartons>0?`<div class="pcard-ctns">${v.fullCartons} ctn${v.fullCartons!==1?'s':''} <span style="font-size:11px;color:#94a3b8;font-weight:400">(${v.fullCartons*v.ppc}pk)</span></div>`:''}
-          ${v.openPacks>0?`<div class="pcard-open">1 open · ${v.openPacks} packs</div>`:''}
+          ${v.openPacks>0?`<div class="pcard-open">1 open Â· ${v.openPacks} packs</div>`:''}
         </div>
       </div>`;
     }).join('');
     return `<div class="pcard">
       <div class="pcard-hdr">
-        <div class="pnum">🏭 Pallet ${p}</div>
+        <div class="pnum">ð­ Pallet ${p}</div>
         <div class="pstats"><div><b>${totalC}</b> cartons</div>${openP>0?`<div style="color:#fcd34d">${openP} loose packs</div>`:''}</div>
       </div>${rows}
     </div>`;
   }).filter(Boolean).join('') || '<div style="color:var(--muted);padding:24px">No pallets found</div>';
 }
 
-// ══════════════════════════════════════════════════════════════════
+// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 // PICK PLAN ENGINE
-// ══════════════════════════════════════════════════════════════════
+// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function setChannel(el) {
   document.querySelectorAll('.ch-pill').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
@@ -994,7 +993,7 @@ function onSkuInput() {
   // Show SKU info
   document.getElementById('sku-picker-info').innerHTML =
     '<span style="color:var(--navy)">' + inv.sku + '</span>' +
-    '  <span style="color:var(--muted);font-weight:400">' + inv.color + ' · ' + inv.size + ' · PPC: ' + inv.ppc + '</span>';
+    '  <span style="color:var(--muted);font-weight:400">' + inv.color + ' Â· ' + inv.size + ' Â· PPC: ' + inv.ppc + '</span>';
 
   updateQtyPreview();
 }
@@ -1023,11 +1022,11 @@ function updateQtyPreview() {
   if (totalPacks > available) {
     hint.style.background = '#fef2f2';
     hint.style.color = 'var(--red)';
-    hint.textContent = '⚠️ Only ' + available + ' packs available — will be capped at ' + available;
+    hint.textContent = 'â ï¸ Only ' + available + ' packs available â will be capped at ' + available;
   } else {
     hint.style.background = '#f0fdf4';
     hint.style.color = 'var(--green)';
-    hint.textContent = '✅ ' + available + ' packs available · ' + inv.ctns + ' sealed cartons';
+    hint.textContent = 'â ' + available + ' packs available Â· ' + inv.ctns + ' sealed cartons';
   }
 }
 
@@ -1083,7 +1082,7 @@ function parseLine(line) {
   var modeLabel = isCtns
     ? rawQty + 'ctn (' + finalQty + 'pks)'
     : finalQty + ' pks';
-  if (finalQty < qty) modeLabel += ' ⚠️';
+  if (finalQty < qty) modeLabel += ' â ï¸';
   return {sku:sku, qty:finalQty, color:inv.color, size:inv.size, ppc:inv.ppc,
           modeLabel:modeLabel, inv:inv, outOfStock:inv.packs===0};
 }
@@ -1098,11 +1097,11 @@ function previewBulk() {
     var r = parseLine(line);
     if (!r) return;
     if (r.notFound) {
-      rows.push('<div style="color:var(--red);padding:2px 0">❌ ' + r.sku + ' — not found</div>');
+      rows.push('<div style="color:var(--red);padding:2px 0">â ' + r.sku + ' â not found</div>');
     } else if (r.outOfStock) {
-      rows.push('<div style="color:var(--muted);padding:2px 0">⚪ ' + r.sku + ' — out of stock</div>');
+      rows.push('<div style="color:var(--muted);padding:2px 0">âª ' + r.sku + ' â out of stock</div>');
     } else {
-      rows.push('<div style="padding:2px 0"><span style="font-weight:700">' + r.sku + '</span> <span style="color:var(--muted)">' + r.color + ' · ' + r.size + '</span> <span style="color:var(--blue);font-weight:700;float:right">' + r.modeLabel + '</span></div>');
+      rows.push('<div style="padding:2px 0"><span style="font-weight:700">' + r.sku + '</span> <span style="color:var(--muted)">' + r.color + ' Â· ' + r.size + '</span> <span style="color:var(--blue);font-weight:700;float:right">' + r.modeLabel + '</span></div>');
     }
   });
   if (rows.length) {
@@ -1137,7 +1136,7 @@ function parseBulk() {
     if (skipped.length) {
       toast('Added ' + added + ' SKUs. Skipped ' + skipped.length + ': ' + skipped.slice(0,3).join(', ') + (skipped.length>3?'...':''), 'info');
     } else {
-      toast('✅ Added ' + added + ' SKU' + (added!==1?'s':'') + ' to queue', 'ok');
+      toast('â Added ' + added + ' SKU' + (added!==1?'s':'') + ' to queue', 'ok');
     }
   } else {
     toast('No valid SKUs found', 'err');
@@ -1152,9 +1151,9 @@ function renderQueue() {
     <div class="queue-item">
       <div>
         <div class="queue-sku">${item.sku}</div>
-        <div class="queue-meta">${item.color} · ${item.size} · ${item.modeLabel || (item.qty + ' packs')}</div>
+        <div class="queue-meta">${item.color} Â· ${item.size} Â· ${item.modeLabel || (item.qty + ' packs')}</div>
       </div>
-      <button class="queue-rm" onclick="removeQueue(${i})">×</button>
+      <button class="queue-rm" onclick="removeQueue(${i})">Ã</button>
     </div>`).join('');
 }
 
@@ -1177,11 +1176,11 @@ function generatePlan() {
   });
 
   if (outOfStock.length > 0) {
-    var msg = 'OUT OF STOCK — removed from plan:\n' + outOfStock.join('\n');
-    toast('⚠️ ' + outOfStock.length + ' SKU' + (outOfStock.length!==1?'s are':' is') + ' out of stock — see plan for details', 'err');
+    var msg = 'OUT OF STOCK â removed from plan:\n' + outOfStock.join('\n');
+    toast('â ï¸ ' + outOfStock.length + ' SKU' + (outOfStock.length!==1?'s are':' is') + ' out of stock â see plan for details', 'err');
   }
   if (lowStock.length > 0) {
-    toast('⚠️ ' + lowStock.length + ' SKU' + (lowStock.length!==1?'s are':' is') + ' short — will be capped: ' + lowStock.slice(0,2).join(', ') + (lowStock.length>2?' +'+( lowStock.length-2)+' more':''), 'info');
+    toast('â ï¸ ' + lowStock.length + ' SKU' + (lowStock.length!==1?'s are':' is') + ' short â will be capped: ' + lowStock.slice(0,2).join(', ') + (lowStock.length>2?' +'+( lowStock.length-2)+' more':''), 'info');
   }
   const ch = currentChannel;
   const steps = [];
@@ -1192,13 +1191,13 @@ function generatePlan() {
     let needed = item.qty;
     const inv = inventory.find(s => s.sku === item.sku);
     if (!inv || inv.packs === 0) {
-      steps.push({type:'warn', label:'⚠️ OUT OF STOCK', desc:item.sku + ' · ' + (item.color||'') + ' · ' + (item.size||'') + ' — 0 packs available, SKU skipped'});
+      steps.push({type:'warn', label:'â ï¸ OUT OF STOCK', desc:item.sku + ' Â· ' + (item.color||'') + ' Â· ' + (item.size||'') + ' â 0 packs available, SKU skipped'});
       return;
     }
     // If requested more than available, cap at what's there and warn
     let cappedNote = '';
     if (inv.packs < needed) {
-      cappedNote = '  ⚠️ SHORT: only ' + inv.packs + ' available, requested ' + needed;
+      cappedNote = '  â ï¸ SHORT: only ' + inv.packs + ' available, requested ' + needed;
       needed = inv.packs;
       item.qty = needed; // update queue item so confirm deducts correct amount
     }
@@ -1208,7 +1207,7 @@ function generatePlan() {
       // Samples: pull from open cartons first, then any pallet
       const sources = findPalletSources(palletCopy, item.sku, needed, true);
       sources.forEach(s => {
-        steps.push({type:'sample', label:`Pallet ${s.pallet}`, desc:`${item.sku} · ${item.color} · ${item.size} — pick ${s.packs} pack${s.packs!==1?'s':''} from ${s.fromOpen?'open carton':'sealed carton'}`});
+        steps.push({type:'sample', label:`Pallet ${s.pallet}`, desc:`${item.sku} Â· ${item.color} Â· ${item.size} â pick ${s.packs} pack${s.packs!==1?'s':''} from ${s.fromOpen?'open carton':'sealed carton'}`});
         totalPacks += s.packs;
         if (!s.fromOpen) totalCtns += Math.ceil(s.packs / inv.ppc);
       });
@@ -1217,7 +1216,7 @@ function generatePlan() {
       const ctnsNeeded = Math.ceil(needed / inv.ppc);
       const sources = findCartonSources(palletCopy, item.sku, ctnsNeeded);
       sources.forEach(s => {
-        steps.push({type:'wholesale', label:`Pallet ${s.pallet}`, desc:`${item.sku} · ${item.color} · ${item.size} — take ${s.ctns} full carton${s.ctns!==1?'s':''} (${s.ctns*inv.ppc} packs)`});
+        steps.push({type:'wholesale', label:`Pallet ${s.pallet}`, desc:`${item.sku} Â· ${item.color} Â· ${item.size} â take ${s.ctns} full carton${s.ctns!==1?'s':''} (${s.ctns*inv.ppc} packs)`});
         totalPacks += s.ctns * inv.ppc;
         totalCtns += s.ctns;
       });
@@ -1230,7 +1229,7 @@ function generatePlan() {
       if (ctnsNeeded > 0) {
         const sources = findCartonSources(palletCopy, item.sku, ctnsNeeded);
         sources.forEach(s => {
-          steps.push({type:'fba', label:'Pallet ' + s.pallet, desc:item.sku + ' · ' + item.color + ' · ' + item.size + ' — ' + s.ctns + ' sealed carton' + (s.ctns!==1?'s':'') + ' → FBA shipment' + cappedNote});
+          steps.push({type:'fba', label:'Pallet ' + s.pallet, desc:item.sku + ' Â· ' + item.color + ' Â· ' + item.size + ' â ' + s.ctns + ' sealed carton' + (s.ctns!==1?'s':'') + ' â FBA shipment' + cappedNote});
           totalCtns += s.ctns;
           cappedNote = '';
         });
@@ -1240,7 +1239,7 @@ function generatePlan() {
       if (remainder > 0) {
         const openSrc = findPalletSources(palletCopy, item.sku, remainder, true);
         openSrc.forEach(s => {
-          steps.push({type:'open-ctn', label:'Pallet ' + s.pallet + ' (open)', desc:item.sku + ' — pick ' + s.packs + ' loose packs from open carton' + cappedNote});
+          steps.push({type:'open-ctn', label:'Pallet ' + s.pallet + ' (open)', desc:item.sku + ' â pick ' + s.packs + ' loose packs from open carton' + cappedNote});
           cappedNote = '';
         });
       }
@@ -1249,7 +1248,7 @@ function generatePlan() {
       const sources = findPalletSources(palletCopy, item.sku, needed, false);
       sources.forEach(s => {
         const cls = s.fromOpen ? 'open-ctn' : 'fba';
-        steps.push({type:cls, label:`Pallet ${s.pallet}${s.fromOpen?' (open)':''}`, desc:`${item.sku} · ${item.color} · ${item.size} — ${s.packs} pack${s.packs!==1?'s':''} from ${s.fromOpen?'open carton':'new carton'}`});
+        steps.push({type:cls, label:`Pallet ${s.pallet}${s.fromOpen?' (open)':''}`, desc:`${item.sku} Â· ${item.color} Â· ${item.size} â ${s.packs} pack${s.packs!==1?'s':''} from ${s.fromOpen?'open carton':'new carton'}`});
         totalPacks += s.packs;
         if (!s.fromOpen) totalCtns++;
       });
@@ -1295,7 +1294,7 @@ function generatePlan() {
     <div><div class="label">Total Packs</div><div class="val">${totalPacks.toLocaleString()}</div></div>
     <div><div class="label">Cartons Opened</div><div class="val">${totalCtns}</div></div>
     <div><div class="label">Channel</div><div class="val" style="font-size:13px">${ch}</div></div>`;
-  toast('Pick plan generated ✅', 'ok');
+  toast('Pick plan generated â', 'ok');
 }
 
 function findPalletSources(palletCopy, sku, needed, openFirst) {
@@ -1389,7 +1388,7 @@ function confirmPick() {
       }
       // Cracking open a partial carton does NOT count as removing a carton
       if (tempRem > 0 && slot.fullCartons > 0) {
-        tempRem = 0;  // partial carton opened — carton stays in count
+        tempRem = 0;  // partial carton opened â carton stays in count
       }
     }
 
@@ -1439,7 +1438,7 @@ function confirmPick() {
     if (result.error) {
       console.error('Supabase save error:', result.error);
       try { localStorage.setItem('usc_livePickLog', JSON.stringify(livePickLog)); } catch(e) {}
-      toast('⚠️ Saved locally (offline)', 'err');
+      toast('â ï¸ Saved locally (offline)', 'err');
     } else {
       // Store Supabase IDs back into livePickLog entries so undo can delete them
       if (result.data && result.data.length) {
@@ -1475,7 +1474,7 @@ function confirmPick() {
   renderLog();
   renderReport();
 
-  toast('✅ ' + count + ' SKU' + (count !== 1 ? 's' : '') + ' deducted & logged', 'ok');
+  toast('â ' + count + ' SKU' + (count !== 1 ? 's' : '') + ' deducted & logged', 'ok');
 }
 
 function getPalletsForSKU(sku) {
@@ -1516,7 +1515,7 @@ function buildPrintArea() {
 
   document.getElementById('print-area').innerHTML = `
     <div class="pp-header">
-      <div class="pp-title">🏠 US Casa — Pick Plan</div>
+      <div class="pp-title">ð  US Casa â Pick Plan</div>
       <div class="pp-meta">
         Channel: <strong>${p.channel}</strong> &nbsp;|&nbsp;
         Generated: ${now} &nbsp;|&nbsp;
@@ -1563,16 +1562,16 @@ function quickSample(type) {
   switchPage('pick');
 }
 
-// ══════════════════════════════════════════════════════════════════
+// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 // ALERTS
-// ══════════════════════════════════════════════════════════════════
+// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function renderAlerts() {
   const out = inventory.filter(s=>getStatus(s)==='out');
   const crit= inventory.filter(s=>getStatus(s)==='critical');
   const low = inventory.filter(s=>getStatus(s)==='low');
   const makeRows = (items, cls) => `<div class="tbl-wrap" style="margin-bottom:12px"><table><tbody>
     ${items.map(s=>`<tr>
-      <td><div class="sku-name">${s.sku}</div><div class="sku-meta">${s.color} · ${s.size} · ${s.po}</div></td>
+      <td><div class="sku-name">${s.sku}</div><div class="sku-meta">${s.color} Â· ${s.size} Â· ${s.po}</div></td>
       <td>${s.packs} packs</td>
       <td>${s.ctns} ctns</td>
       <td><span class="chip ${cls}">${getStatus(s).toUpperCase()}</span></td>
@@ -1581,18 +1580,18 @@ function renderAlerts() {
   </tbody></table></div>`;
   let html = '';
   if (!out.length && !crit.length && !low.length)
-    html = '<div style="text-align:center;padding:48px;font-size:15px;color:var(--green);font-weight:700">✅ All stock levels OK!</div>';
+    html = '<div style="text-align:center;padding:48px;font-size:15px;color:var(--green);font-weight:700">â All stock levels OK!</div>';
   else {
-    if (out.length)  html += `<div class="alert-sec-title" style="color:var(--red)">🔴 Out of Stock (${out.length})</div>${makeRows(out,'chip-gray')}`;
-    if (crit.length) html += `<div class="alert-sec-title" style="color:var(--red)">⚠️ Critical (${crit.length})</div>${makeRows(crit,'chip-red')}`;
-    if (low.length)  html += `<div class="alert-sec-title" style="color:var(--yellow)">🟡 Low Stock (${low.length})</div>${makeRows(low,'chip-yellow')}`;
+    if (out.length)  html += `<div class="alert-sec-title" style="color:var(--red)">ð´ Out of Stock (${out.length})</div>${makeRows(out,'chip-gray')}`;
+    if (crit.length) html += `<div class="alert-sec-title" style="color:var(--red)">â ï¸ Critical (${crit.length})</div>${makeRows(crit,'chip-red')}`;
+    if (low.length)  html += `<div class="alert-sec-title" style="color:var(--yellow)">ð¡ Low Stock (${low.length})</div>${makeRows(low,'chip-yellow')}`;
   }
   document.getElementById('alerts-content').innerHTML = html;
 }
 
-// ══════════════════════════════════════════════════════════════════
+// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 // LOG
-// ══════════════════════════════════════════════════════════════════
+// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function renderLog() {
   const ch       = document.getElementById('log-ch').value;
   const fromVal  = document.getElementById('log-date-from').value;
@@ -1622,8 +1621,8 @@ function renderLog() {
     const realIdx = txLog.indexOf(t);
     const isLive = t.note && t.note.startsWith('Pick:');
     const actionBtns = isLive
-      ? '<button onclick="editLogEntry(' + realIdx + ')" style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px" title="Edit">✏️</button>' +
-        '<button onclick="deleteLogEntry(' + realIdx + ')" style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px" title="Delete">🗑️</button>'
+      ? '<button onclick="editLogEntry(' + realIdx + ')" style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px" title="Edit">âï¸</button>' +
+        '<button onclick="deleteLogEntry(' + realIdx + ')" style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px" title="Delete">ðï¸</button>'
       : '';
     return '<tr>' +
       '<td style="font-size:11px;color:var(--muted);white-space:nowrap">' + new Date(t.time).toLocaleString() + '</td>' +
@@ -1631,9 +1630,9 @@ function renderLog() {
       '<td style="font-weight:700;font-size:12px">' + t.sku + '</td>' +
       '<td>' + (t.color||'') + '</td>' +
       '<td>' + (t.size||'') + '</td>' +
-      '<td style="font-size:12px;color:var(--muted)">' + (t.pallets||'—') + '</td>' +
+      '<td style="font-size:12px;color:var(--muted)">' + (t.pallets||'â') + '</td>' +
       '<td class="' + (t.type==='out'?'qty-neg':'qty-pos') + '">' + (t.type==='out'?'-':'+') + t.packs + '</td>' +
-      '<td style="color:var(--muted)">' + (t.ctns||'—') + '</td>' +
+      '<td style="color:var(--muted)">' + (t.ctns||'â') + '</td>' +
       '<td style="font-size:12px;color:var(--muted)">' + (t.note||'') + '</td>' +
       '<td style="white-space:nowrap">' + actionBtns + '</td>' +
       '</tr>';
@@ -1645,7 +1644,7 @@ function renderLog() {
     '<td style="font-size:11px">TOTAL (' + totalRows + ' entries)</td>' +
     '<td></td><td></td><td></td><td></td><td></td>'
     '<td style="color:#f87171;font-size:14px">-' + totalPacks.toLocaleString() + ' pks</td>' +
-    '<td style="color:#fcd34d">' + (totalCtns || '—') + ' ctns</td>' +
+    '<td style="color:#fcd34d">' + (totalCtns || 'â') + ' ctns</td>' +
     '<td></td>' +
     '</tr>';
 
@@ -1680,13 +1679,13 @@ async function undoLast() {
   const liveTx = txLog.find(t => t.note && t.note.startsWith('Pick:'));
   if (!liveTx) { toast('No live picks to undo', 'err'); return; }
 
-  // Delete from Supabase — try by ID first, fall back to matching by sku+time
+  // Delete from Supabase â try by ID first, fall back to matching by sku+time
   try {
     if (liveTx.id) {
       const { error } = await sb.from('picks').delete().eq('id', liveTx.id);
       if (error) throw error;
     } else {
-      // No ID saved locally — match by sku, packs, channel and created_at approximation
+      // No ID saved locally â match by sku, packs, channel and created_at approximation
       const isoTime = new Date(liveTx.time).toISOString();
       const { error } = await sb.from('picks').delete()
         .eq('sku', liveTx.sku)
@@ -1710,7 +1709,7 @@ async function undoLast() {
 
   buildInventory();
   renderAll();
-  toast('↩ Undid: ' + liveTx.sku + ' (' + liveTx.packs + ' packs)', 'info');
+  toast('â© Undid: ' + liveTx.sku + ' (' + liveTx.packs + ' packs)', 'info');
 }
 
 function exportLog() {
@@ -1731,9 +1730,9 @@ function exportLog() {
   dlCSV(rows, 'USC_Log.csv');
 }
 
-// ══════════════════════════════════════════════════════════════════
+// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 // ADJUST MODAL
-// ══════════════════════════════════════════════════════════════════
+// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function openAdj() { document.getElementById('adj-overlay').classList.add('open'); }
 function closeAdj() { document.getElementById('adj-overlay').classList.remove('open'); }
 document.getElementById('adj-overlay').addEventListener('click', e => { if (e.target===document.getElementById('adj-overlay')) closeAdj(); });
@@ -1755,13 +1754,13 @@ function applyAdj() {
   buildInventory();
   renderAll();
   closeAdj();
-  toast(`✅ Adjusted ${sku}`, 'ok');
+  toast(`â Adjusted ${sku}`, 'ok');
 }
 
-// ══════════════════════════════════════════════════════════════════
+// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 // REPORTS
-// ══════════════════════════════════════════════════════════════════
-// ── REPORT HELPERS ────────────────────────────────────────────
+// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ââ REPORT HELPERS ââââââââââââââââââââââââââââââââââââââââââââ
 function getChannelStats() {
   const ch = {};
   txLog.forEach(e => {
@@ -1792,7 +1791,7 @@ function getSkuChannelMatrix() {
 function renderReport() {
   const type = document.getElementById('rpt-type').value;
   const el = document.getElementById('rpt-content');
-  // ── CHANNEL SUMMARY ──────────────────────────────────────
+  // ââ CHANNEL SUMMARY ââââââââââââââââââââââââââââââââââââââ
   if (type === 'channel_summary') {
     const ch = getChannelStats();
     const channels = ['Amazon FBA','eBay','TikTok Shop','Sample','Wholesale'];
@@ -1826,7 +1825,7 @@ function renderReport() {
         </tbody></table>
       </div>`;
 
-  // ── SKU BY CHANNEL MATRIX ──────────────────────────────────
+  // ââ SKU BY CHANNEL MATRIX ââââââââââââââââââââââââââââââââââ
   } else if (type === 'sku_by_channel') {
     const m = getSkuChannelMatrix();
     const rows = Object.entries(m).sort((a,b)=>b[1].total-a[1].total);
@@ -1836,11 +1835,11 @@ function renderReport() {
       <div class="tbl-wrap scroll">
         <table><thead><tr>
           <th>SKU</th><th>Color</th><th>Size</th>
-          <th style="background:#fff7ed">🛒 Amazon</th>
-          <th style="background:#eff6ff">🔵 eBay</th>
-          <th style="background:#fdf4ff">🎵 TikTok</th>
-          <th style="background:#f5f3ff">🎁 Sample</th>
-          <th style="background:#f0fdfa">🏢 Wholesale</th>
+          <th style="background:#fff7ed">ð Amazon</th>
+          <th style="background:#eff6ff">ðµ eBay</th>
+          <th style="background:#fdf4ff">ðµ TikTok</th>
+          <th style="background:#f5f3ff">ð Sample</th>
+          <th style="background:#f0fdfa">ð¢ Wholesale</th>
           <th>Total</th>
         </tr></thead>
         <tbody>
@@ -1848,11 +1847,11 @@ function renderReport() {
           <td style="font-weight:700;font-size:12px">${sku}</td>
           <td style="font-size:12px">${d.color}</td>
           <td style="font-size:12px;color:var(--muted)">${d.size}</td>
-          <td style="background:#fff7ed;font-weight:${d.amz?'700':'400'};color:${d.amz?'var(--orange)':'var(--muted)'}">${d.amz||'—'}</td>
-          <td style="background:#eff6ff;font-weight:${d.ebay?'700':'400'};color:${d.ebay?'var(--blue)':'var(--muted)'}">${d.ebay||'—'}</td>
-          <td style="background:#fdf4ff;font-weight:${d.tt?'700':'400'};color:${d.tt?'var(--pink)':'var(--muted)'}">${d.tt||'—'}</td>
-          <td style="background:#f5f3ff;font-weight:${d.sample?'700':'400'};color:${d.sample?'var(--purple)':'var(--muted)'}">${d.sample||'—'}</td>
-          <td style="background:#f0fdfa;font-weight:${d.ws?'700':'400'};color:${d.ws?'var(--teal)':'var(--muted)'}">${d.ws||'—'}</td>
+          <td style="background:#fff7ed;font-weight:${d.amz?'700':'400'};color:${d.amz?'var(--orange)':'var(--muted)'}">${d.amz||'â'}</td>
+          <td style="background:#eff6ff;font-weight:${d.ebay?'700':'400'};color:${d.ebay?'var(--blue)':'var(--muted)'}">${d.ebay||'â'}</td>
+          <td style="background:#fdf4ff;font-weight:${d.tt?'700':'400'};color:${d.tt?'var(--pink)':'var(--muted)'}">${d.tt||'â'}</td>
+          <td style="background:#f5f3ff;font-weight:${d.sample?'700':'400'};color:${d.sample?'var(--purple)':'var(--muted)'}">${d.sample||'â'}</td>
+          <td style="background:#f0fdfa;font-weight:${d.ws?'700':'400'};color:${d.ws?'var(--teal)':'var(--muted)'}">${d.ws||'â'}</td>
           <td style="font-weight:800">${d.total}</td>
         </tr>`).join('')}
         <tr style="background:var(--navy);color:#fff;font-weight:800">
@@ -1861,13 +1860,13 @@ function renderReport() {
           <td style="background:#1d4ed8">${totals.ebay}</td>
           <td style="background:#9d174d">${totals.tt}</td>
           <td style="background:#6d28d9">${totals.sample}</td>
-          <td style="background:#0f766e">${totals.ws||'—'}</td>
+          <td style="background:#0f766e">${totals.ws||'â'}</td>
           <td>${totals.total}</td>
         </tr>
         </tbody></table>
       </div>`;
 
-  // ── CHANNEL DETAIL (Amazon / eBay / TikTok) ───────────────
+  // ââ CHANNEL DETAIL (Amazon / eBay / TikTok) âââââââââââââââ
   } else if (type === 'amazon' || type === 'ebay' || type === 'tiktok') {
     const chMap = {amazon:'Amazon FBA', ebay:'eBay', tiktok:'TikTok Shop'};
     const ch = chMap[type];
@@ -1897,13 +1896,13 @@ function renderReport() {
         <tbody>${entries.map(e=>`<tr>
           <td style="font-size:11px;color:var(--muted);white-space:nowrap">${new Date(e.time).toLocaleString()}</td>
           <td style="font-weight:700;font-size:12px">${e.sku}</td><td>${e.color}</td><td>${e.size}</td>
-          <td style="color:var(--muted)">${e.pallets||'—'}</td>
+          <td style="color:var(--muted)">${e.pallets||'â'}</td>
           <td class="qty-neg">-${e.packs}</td>
           <td style="font-size:11px;color:var(--muted)">${e.note||''}</td>
         </tr>`).join('')}</tbody></table>
       </div>`;
 
-  // ── INVENTORY ──────────────────────────────────────────────
+  // ââ INVENTORY ââââââââââââââââââââââââââââââââââââââââââââââ
   } else if (type === 'inventory') {
     const totalPacks = inventory.reduce((a,s)=>a+s.packs,0);
     const totalCtns  = inventory.reduce((a,s)=>a+s.ctns,0);
@@ -1921,7 +1920,7 @@ function renderReport() {
       </div>
       <div class="rpt-grid">
         <div class="rpt-card"><h4>By PO</h4>${Object.entries(byPO).map(([po,d])=>`<div class="rpt-row"><span>${po}</span><span class="rpt-val">${d.packs.toLocaleString()}pk / ${d.ctns}c</span></div>`).join('')}</div>
-        <div class="rpt-card"><h4>Low & Critical</h4>${inventory.filter(s=>['low','critical','out'].includes(getStatus(s))).map(s=>`<div class="rpt-row"><span style="font-size:12px">${s.sku}</span><span>${statusChip[getStatus(s)]}</span></div>`).join('')||'<div style="padding:10px;color:var(--muted);font-size:13px">All OK ✅</div>'}</div>
+        <div class="rpt-card"><h4>Low & Critical</h4>${inventory.filter(s=>['low','critical','out'].includes(getStatus(s))).map(s=>`<div class="rpt-row"><span style="font-size:12px">${s.sku}</span><span>${statusChip[getStatus(s)]}</span></div>`).join('')||'<div style="padding:10px;color:var(--muted);font-size:13px">All OK â</div>'}</div>
       </div>
       <div class="tbl-wrap scroll">
         <table><thead><tr><th>SKU</th><th>Color</th><th>Size</th><th>PO</th><th>Packs</th><th>Cartons</th><th>PPC</th><th>% Remaining</th><th>Status</th></tr></thead>
@@ -1961,7 +1960,7 @@ function renderReport() {
         <div class="stat"><div class="sv">9,928 KGS</div><div class="sl">Gross Weight</div></div>
         <div class="stat"><div class="sv">8,653 KGS</div><div class="sl">Net Weight</div></div>
       </div>
-      <div style="font-size:13px;color:var(--muted);margin-bottom:14px">Invoice LSM/786/5471/2025 · Container: UACU8503930 · B/L: BANQ1069613588 · ETD: Oct 2, 2025 · Supplier: Lakhany Silk Mills (Pvt) Ltd.</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:14px">Invoice LSM/786/5471/2025 Â· Container: UACU8503930 Â· B/L: BANQ1069613588 Â· ETD: Oct 2, 2025 Â· Supplier: Lakhany Silk Mills (Pvt) Ltd.</div>
       <div class="tbl-wrap scroll">
         <table><thead><tr><th>SKU</th><th>Color</th><th>PO</th><th>Size</th><th>Poly Barcode</th><th>Carton Barcode</th><th>Ordered Ctns</th><th>PPC</th><th>Total Packs</th><th>In Warehouse</th></tr></thead>
         <tbody>${BASE_INV.map(s=>{
@@ -1992,9 +1991,9 @@ function exportInvCSV() {
   dlCSV(rows, 'USC_Inventory.csv');
 }
 
-// ══════════════════════════════════════════════════════════════════
+// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 // UTILS
-// ══════════════════════════════════════════════════════════════════
+// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function dlCSV(rows, name) {
   const csv = rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
   const a = document.createElement('a');
@@ -2012,9 +2011,9 @@ function toast(msg, type='ok') {
 }
 
 
-// ══════════════════════════════════════════════════════════════
+// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 // PICK PLAN PDF GENERATOR
-// ══════════════════════════════════════════════════════════════
+// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function downloadPickPlanPDF() {
   if (!currentPlan) { toast('Generate a plan first', 'err'); return; }
   const { jsPDF } = window.jspdf;
@@ -2136,7 +2135,7 @@ function downloadPickPlanPDF() {
     var mCtns=s.desc.match(/(\d+) sealed carton/i);
     if(mPks)qtyStr=mPks[1]+' pks';
     else if(mCtns){var n=parseInt(mCtns[1]);qtyStr=n+' ctn'+(n!==1?'s':'');}
-    var skuPart=s.desc.split('—')[0].replace('arrow FBA shipment','').trim();
+    var skuPart=s.desc.split('â')[0].replace('arrow FBA shipment','').trim();
     if(skuPart.length>60)skuPart=skuPart.substring(0,58)+'...';
     pickBody.push([String(stepNum),s.label,skuPart,action,qtyStr]);
     pickStyles.push({ri:pickBody.length-1,bg:bg,acc:acc});
@@ -2192,7 +2191,7 @@ async function resetAllPicks() {
   try { localStorage.removeItem('usc_livePickLog'); } catch(e) {}
   buildInventory();
   renderAll();
-  toast('↺ Picks reset to warehouse scan baseline', 'info');
+  toast('âº Picks reset to warehouse scan baseline', 'info');
 }
 
 function showSyncStatus(status) {
@@ -2221,9 +2220,9 @@ function showSyncStatus(status) {
 }
 
 
-// ══════════════════════════════════════════════════════════════
+// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 // CSV BULK UPLOAD
-// ══════════════════════════════════════════════════════════════
+// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 var csvParsedRows = [];
 
 function downloadCSVTemplate() {
@@ -2280,10 +2279,10 @@ function parseCSVRow(cols, headers) {
 
   var totalPacks = 0;
   if (qtyCol >= 0 && cols[qtyCol]) {
-    // Amazon format — use Total units directly
+    // Amazon format â use Total units directly
     totalPacks = parseInt(cols[qtyCol]) || 0;
   } else if (boxCol >= 0 || packCol >= 0) {
-    // Our template format — box qty * ppc + pack qty
+    // Our template format â box qty * ppc + pack qty
     var inv = inventory.find(function(s){ return s.sku === sku; });
     var ppc = inv ? inv.ppc : 1;
     var boxQty  = parseInt((cols[boxCol]  || '').replace(/[^0-9]/g,'')) || 0;
@@ -2398,7 +2397,7 @@ function parseCSVFile(text) {
   });
 
   renderCSVPreview();
-  document.getElementById('csv-count').textContent = valid + ' ready · ' + invalid + ' issues';
+  document.getElementById('csv-count').textContent = valid + ' ready Â· ' + invalid + ' issues';
 }
 
 function renderCSVPreview() {
@@ -2407,12 +2406,12 @@ function renderCSVPreview() {
   var issueHtml = '';
   if (issues.length > 0) {
     issueHtml = '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 12px;margin-bottom:8px">' +
-      '<div style="font-size:11px;font-weight:700;color:#dc2626;margin-bottom:6px">⚠️ ' + issues.length + ' ISSUE' + (issues.length!==1?'S':'') + ' — review before adding to queue</div>' +
+      '<div style="font-size:11px;font-weight:700;color:#dc2626;margin-bottom:6px">â ï¸ ' + issues.length + ' ISSUE' + (issues.length!==1?'S':'') + ' â review before adding to queue</div>' +
       issues.map(function(r) {
         var msg = '';
-        if (r.status === 'not_found') msg = '❌ Not in inventory';
-        else if (r.status === 'out')   msg = '⚪ Out of stock (0 packs available)';
-        else if (r.status === 'capped') msg = '⚠️ Short — need ' + r.totalPacks + ', only ' + r.available + ' available (will send ' + r.finalQty + ')';
+        if (r.status === 'not_found') msg = 'â Not in inventory';
+        else if (r.status === 'out')   msg = 'âª Out of stock (0 packs available)';
+        else if (r.status === 'capped') msg = 'â ï¸ Short â need ' + r.totalPacks + ', only ' + r.available + ' available (will send ' + r.finalQty + ')';
         return '<div style="font-size:11px;padding:2px 0;display:flex;justify-content:space-between">' +
           '<span style="font-weight:700;color:#1e293b">' + r.sku + '</span>' +
           '<span style="color:#dc2626">' + msg + '</span>' +
@@ -2428,7 +2427,7 @@ function renderCSVPreview() {
     if (r.status === 'not_found') {
       return '<tr style="background:#fef2f2">' +
         '<td style="padding:6px 10px;font-weight:700;font-size:11px;color:#dc2626">' + r.sku + '</td>' +
-        '<td colspan="4" style="padding:6px;text-align:center;color:#dc2626;font-size:11px">❌ SKU not found in inventory</td>' +
+        '<td colspan="4" style="padding:6px;text-align:center;color:#dc2626;font-size:11px">â SKU not found in inventory</td>' +
         '</tr>';
     }
     if (r.status === 'out') {
@@ -2441,16 +2440,16 @@ function renderCSVPreview() {
         '</tr>';
     }
     var statusBadge = r.status === 'capped'
-      ? '<span class="chip chip-yellow">⚠️ Capped ' + r.finalQty + '</span>'
-      : '<span class="chip chip-green">✅ Ready</span>';
+      ? '<span class="chip chip-yellow">â ï¸ Capped ' + r.finalQty + '</span>'
+      : '<span class="chip chip-green">â Ready</span>';
     var modeLabel = '';
     if (r.boxQty > 0 && r.packQty > 0) modeLabel = r.boxQty + 'c + ' + r.packQty + 'pk';
     else if (r.boxQty > 0) modeLabel = r.boxQty + ' ctn' + (r.boxQty!==1?'s':'');
     else modeLabel = r.packQty + ' pks';
     return '<tr style="background:' + bg + '">' +
-      '<td style="padding:6px 10px;font-weight:700;font-size:11px">' + r.sku + '<div style="font-size:10px;color:#94a3b8;font-weight:400">' + r.color + ' · ' + r.size + '</div></td>' +
-      '<td style="padding:6px;text-align:center;font-weight:700">' + (r.boxQty || '—') + '</td>' +
-      '<td style="padding:6px;text-align:center;font-weight:700">' + (r.packQty || '—') + '</td>' +
+      '<td style="padding:6px 10px;font-weight:700;font-size:11px">' + r.sku + '<div style="font-size:10px;color:#94a3b8;font-weight:400">' + r.color + ' Â· ' + r.size + '</div></td>' +
+      '<td style="padding:6px;text-align:center;font-weight:700">' + (r.boxQty || 'â') + '</td>' +
+      '<td style="padding:6px;text-align:center;font-weight:700">' + (r.packQty || 'â') + '</td>' +
       '<td style="padding:6px;text-align:center;font-weight:700;color:#2563eb">' + r.finalQty + '</td>' +
       '<td style="padding:6px;text-align:center">' + statusBadge + '</td>' +
       '</tr>';
@@ -2473,7 +2472,7 @@ function addCSVToQueue() {
   renderQueue();
   // Close the details
   document.getElementById('bulk-details').removeAttribute('open');
-  toast('✅ Added ' + added + ' SKU' + (added!==1?'s':'') + ' to queue', 'ok');
+  toast('â Added ' + added + ' SKU' + (added!==1?'s':'') + ' to queue', 'ok');
 }
 
 function clearCSV() {
@@ -2483,9 +2482,9 @@ function clearCSV() {
 }
 
 
-// ══════════════════════════════════════════════════════════════
+// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 // LOG EDIT & RECYCLE BIN
-// ══════════════════════════════════════════════════════════════
+// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 var deletedEntries = []; // recycle bin
 var editingLogIdx = -1;
 
@@ -2540,13 +2539,13 @@ async function saveLogEdit() {
   closeLogEdit();
   buildInventory();
   renderAll();
-  toast('✅ Log entry updated', 'ok');
+  toast('â Log entry updated', 'ok');
 }
 
 async function deleteLogEntry(idx) {
   const t = txLog[idx];
   if (!t) return;
-  if (!confirm('Delete entry: ' + t.sku + ' · ' + t.packs + ' packs · ' + t.channel)) return;
+  if (!confirm('Delete entry: ' + t.sku + ' Â· ' + t.packs + ' packs Â· ' + t.channel)) return;
 
   // Move to recycle bin FIRST
   deletedEntries.unshift(Object.assign({}, t, {deletedAt: new Date().toISOString()}));
@@ -2566,7 +2565,7 @@ async function deleteLogEntry(idx) {
 
   buildInventory();
   renderAll();
-  toast('🗑️ Deleted — open Recycle Bin to restore', 'info');
+  toast('ðï¸ Deleted â open Recycle Bin to restore', 'info');
 }
 
 function openRecycleBin() {
@@ -2578,10 +2577,10 @@ function openRecycleBin() {
       return '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">' +
         '<div style="flex:1">' +
           '<div style="font-weight:700;font-size:13px">' + t.sku + '</div>' +
-          '<div style="font-size:11px;color:var(--muted)">' + t.channel + ' · ' + t.packs + ' packs · ' + new Date(t.time).toLocaleString() + '</div>' +
+          '<div style="font-size:11px;color:var(--muted)">' + t.channel + ' Â· ' + t.packs + ' packs Â· ' + new Date(t.time).toLocaleString() + '</div>' +
           '<div style="font-size:10px;color:#f87171">Deleted ' + new Date(t.deletedAt).toLocaleString() + '</div>' +
         '</div>' +
-        '<button class="btn btn-green btn-sm" onclick="restoreEntry(' + i + ')">↩ Restore</button>' +
+        '<button class="btn btn-green btn-sm" onclick="restoreEntry(' + i + ')">â© Restore</button>' +
       '</div>';
     }).join('');
   }
@@ -2616,7 +2615,7 @@ async function restoreEntry(idx) {
   buildInventory();
   renderAll();
   closeRecycleBin();
-  toast('↩ Entry restored', 'ok');
+  toast('â© Entry restored', 'ok');
 }
 
 document.addEventListener('DOMContentLoaded', init);
@@ -2629,8 +2628,8 @@ document.addEventListener('DOMContentLoaded', init);
 <div id="log-edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center">
   <div style="background:var(--white);border-radius:16px;padding:24px;width:440px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.3)">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
-      <div style="font-size:15px;font-weight:800;color:var(--navy)">✏️ Edit Log Entry</div>
-      <button onclick="closeLogEdit()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">✕</button>
+      <div style="font-size:15px;font-weight:800;color:var(--navy)">âï¸ Edit Log Entry</div>
+      <button onclick="closeLogEdit()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">â</button>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
       <div>
@@ -2657,7 +2656,7 @@ document.addEventListener('DOMContentLoaded', init);
       </div>
     </div>
     <div style="display:flex;gap:10px">
-      <button class="btn btn-blue" style="flex:1" onclick="saveLogEdit()">💾 Save Changes</button>
+      <button class="btn btn-blue" style="flex:1" onclick="saveLogEdit()">ð¾ Save Changes</button>
       <button class="btn btn-gray" onclick="closeLogEdit()">Cancel</button>
     </div>
   </div>
@@ -2667,8 +2666,8 @@ document.addEventListener('DOMContentLoaded', init);
 <div id="recycle-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center">
   <div style="background:var(--white);border-radius:16px;padding:24px;width:540px;max-width:95vw;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.3)">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <div style="font-size:15px;font-weight:800;color:var(--navy)">🗑️ Recycle Bin</div>
-      <button onclick="closeRecycleBin()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">✕</button>
+      <div style="font-size:15px;font-weight:800;color:var(--navy)">ðï¸ Recycle Bin</div>
+      <button onclick="closeRecycleBin()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">â</button>
     </div>
     <div id="recycle-list" style="overflow-y:auto;flex:1;margin-bottom:16px"></div>
     <button class="btn btn-gray btn-sm" onclick="closeRecycleBin()">Close</button>
