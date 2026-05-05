@@ -539,6 +539,8 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       <button class="mgr-tab" data-tab="adjust" onclick="mgrSwitchTab('adjust')">⚖️ Adjust</button>
       <button class="mgr-tab" data-tab="create" onclick="mgrSwitchTab('create')">➕ New Pallet</button>
       <button class="mgr-tab" data-tab="activity" onclick="mgrSwitchTab('activity')">📋 Activity</button>
+      <button class="mgr-tab" data-tab="fix" onclick="mgrSwitchTab('fix')" style="color:#dc2626">🔧 Fix Picks</button>
+      <button class="mgr-tab" data-tab="editor" onclick="mgrSwitchTab('editor')" style="color:#7c3aed">✏️ Editor</button>
     </div>
 
     <!-- RECEIVE -->
@@ -797,6 +799,87 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       </div>
       <div class="tbl-wrap scroll" id="mgact-table-wrap"></div>
     </div>
+
+    <!-- FIX PICKS -->
+    <div id="mgr-tab-fix" class="mgr-tab-pane" style="display:none">
+      <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:16px;margin-bottom:14px">
+        <div style="font-weight:800;color:#991b1b;margin-bottom:6px">🧹 Wipe Recent Picks</div>
+        <div style="font-size:12px;color:#7f1d1d">
+          Use this when picks were logged incorrectly (e.g., spread across wrong pallets) and you want to undo
+          them so the WMS matches your physical inventory baseline. After wiping, you can re-log the picks correctly
+          using the regular Pick page or the Manager.
+        </div>
+      </div>
+
+      <div style="background:var(--white);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px">
+        <h3 style="font-size:14px;font-weight:800;margin-bottom:12px">Filters</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+          <div class="field" style="margin-bottom:0">
+            <label>Channel</label>
+            <select id="fix-channel" onchange="fixShowPreview()">
+              <option value="Amazon FBA">Amazon FBA only</option>
+              <option value="">All channels</option>
+              <option value="eBay">eBay only</option>
+              <option value="TikTok">TikTok only</option>
+              <option value="Sample">Sample only</option>
+              <option value="Wholesale">Wholesale only</option>
+            </select>
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <label>How recent</label>
+            <select id="fix-days" onchange="fixShowPreview()">
+              <option value="1">Today only</option>
+              <option value="3" selected>Last 3 days</option>
+              <option value="7">Last 7 days</option>
+              <option value="14">Last 14 days</option>
+              <option value="30">Last 30 days</option>
+            </select>
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <label>Type</label>
+            <select id="fix-type" onchange="fixShowPreview()">
+              <option value="out">Picks only ('out')</option>
+              <option value="all-types">All entry types</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:var(--white);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <h3 style="font-size:14px;font-weight:800">Entries that will be deleted</h3>
+          <span class="chip chip-orange" id="fix-bad-count">0 entries</span>
+        </div>
+        <div id="fix-bad-summary" style="font-size:12px;color:var(--muted);margin-bottom:10px"></div>
+        <div class="tbl-wrap scroll" id="fix-bad-table" style="max-height:400px"></div>
+      </div>
+
+      <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center">
+        <span style="font-size:12px;color:var(--muted);margin-right:auto">⚠️ This deletes the entries from both your local log and Supabase. Inventory will rebuild from baseline.</span>
+        <button class="btn btn-gray" onclick="fixShowPreview()">🔄 Refresh</button>
+        <button class="btn btn-red" onclick="fixApply()">🧹 Delete Filtered Entries</button>
+      </div>
+    </div>
+
+    <!-- PALLET EDITOR -->
+    <div id="mgr-tab-editor" class="mgr-tab-pane" style="display:none">
+      <div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:12px;padding:14px;margin-bottom:14px">
+        <div style="font-weight:800;color:#5b21b6;margin-bottom:6px">✏️ Pallet Editor</div>
+        <div style="font-size:12px;color:#5b21b6">
+          Edit pallet contents directly. Each change autosaves and creates an Adjustment entry in your log.
+          Changes drain or add specifically to the pallet — they do not spread.
+        </div>
+      </div>
+
+      <div class="toolbar" style="margin-bottom:14px">
+        <input class="search" id="ed-search" placeholder="🔍 Search pallet # or SKU..." oninput="edRender()" style="flex:1;max-width:300px">
+        <button class="btn btn-blue btn-sm" onclick="edNewPallet()">➕ New Pallet</button>
+        <span id="ed-status" style="margin-left:auto;font-size:12px;color:var(--muted)"></span>
+      </div>
+
+      <div id="ed-grid"></div>
+    </div>
+
   </div>
 </div>
 
@@ -811,6 +894,22 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 .bulk-mode-pane{animation:fadeIn .15s ease}
 .bulk-pkg-card{background:var(--white);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:8px}
 .bulk-pkg-hdr{display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:13px;margin-bottom:8px;color:var(--navy)}
+.ed-card{background:var(--white);border:1px solid var(--border);border-radius:10px;margin-bottom:10px;overflow:hidden}
+.ed-card-hdr{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#1e293b;color:#fff}
+.ed-card-hdr h4{font-size:14px;font-weight:700;margin:0}
+.ed-card-actions{display:flex;gap:6px}
+.ed-card-actions .btn-sm{padding:4px 8px;font-size:11px}
+.ed-row{display:grid;grid-template-columns:2fr 80px 80px 50px 80px;gap:8px;align-items:center;padding:8px 14px;border-top:1px solid var(--border)}
+.ed-row:first-child{border-top:none}
+.ed-row .ed-label{font-size:12px}
+.ed-row .ed-label .sku-name{font-weight:700;font-size:13px}
+.ed-row .ed-label .sku-meta{color:var(--muted);font-size:11px}
+.ed-row input[type="number"]{width:100%;height:30px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;text-align:right;outline:none}
+.ed-row input[type="number"]:focus{border-color:var(--blue)}
+.ed-row .ed-saving{color:var(--green);font-size:11px;text-align:center}
+.ed-row .ed-error{color:var(--red);font-size:11px;text-align:center}
+.ed-add-row{padding:10px 14px;background:#f8fafc;border-top:1px solid var(--border);display:grid;grid-template-columns:2fr 80px 80px 50px 80px;gap:8px;align-items:center}
+.ed-add-row select,.ed-add-row input{height:30px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;outline:none}
 </style>
 
 <!-- ═══════════════════════════════════════════════════════ ADJUST MODAL -->
@@ -847,7 +946,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 // ══════════════════════════════════════════════════════════════════
 const BASE_INV = [{"sku":"GM-TWL-400-A-51","color":"ANTHRAZIT","size":"20x40 in","po":"TWL-400-001","ppc":8,"poly":"4260285685507","cartonBarcode":"4251590118743","totalCtns":20,"totalPacks":160,"ctnsIn":17,"packsIn":143},{"sku":"GM-TWL-400-A-71","color":"ANTHRAZIT","size":"27x54 in","po":"TWL-400-001","ppc":8,"poly":"4260285685606","cartonBarcode":"4251590118750","totalCtns":37,"totalPacks":296,"ctnsIn":34,"packsIn":272},{"sku":"GM-TWL-400-S-51","color":"SAND","size":"20x40 in","po":"TWL-400-001","ppc":8,"poly":"4251590100052","cartonBarcode":"4251590119160","totalCtns":10,"totalPacks":80,"ctnsIn":8,"packsIn":64},{"sku":"GM-TWL-400-S-71","color":"SAND","size":"27x54 in","po":"TWL-400-001","ppc":8,"poly":"4251590100090","cartonBarcode":"4251590119177","totalCtns":28,"totalPacks":224,"ctnsIn":27,"packsIn":223},{"sku":"GM-TWL-400-W-51","color":"WHITE","size":"20x40 in","po":"TWL-400-001","ppc":8,"poly":"4260285685491","cartonBarcode":"4251590119344","totalCtns":20,"totalPacks":160,"ctnsIn":17,"packsIn":143},{"sku":"GM-TWL-400-W-71","color":"WHITE","size":"27x54 in","po":"TWL-400-001","ppc":8,"poly":"4260285685590","cartonBarcode":"4251590119351","totalCtns":40,"totalPacks":320,"ctnsIn":38,"packsIn":304},{"sku":"HB-C-TWL-400-DR-33","color":"DUNE RED","size":"12x12 in","po":"T4-001","ppc":24,"poly":"5061099980241","cartonBarcode":"15061099980248","totalCtns":4,"totalPacks":96,"ctnsIn":3,"packsIn":72},{"sku":"HB-C-TWL-400-DR-46","color":"DUNE RED","size":"16x24 in","po":"T4-001","ppc":24,"poly":"5061099980258","cartonBarcode":"15061099980255","totalCtns":8,"totalPacks":192,"ctnsIn":7,"packsIn":188},{"sku":"HB-C-TWL-400-DR-61","color":"DUNE RED","size":"27x54 in","po":"T4-001","ppc":8,"poly":"5061099980265","cartonBarcode":"15061099980262","totalCtns":8,"totalPacks":64,"ctnsIn":5,"packsIn":47},{"sku":"HB-C-TWL-400-DR-8M","color":"DUNE RED","size":"8 PC SET","po":"T4-001","ppc":12,"poly":"5061099980272","cartonBarcode":"15061099980279","totalCtns":5,"totalPacks":60,"ctnsIn":3,"packsIn":46},{"sku":"HB-C-TWL-400-MG-33","color":"MOSS GREEN","size":"12x12 in","po":"T4-001","ppc":24,"poly":"5061099980289","cartonBarcode":"15061099980286","totalCtns":4,"totalPacks":96,"ctnsIn":2,"packsIn":71},{"sku":"HB-C-TWL-400-MG-46","color":"MOSS GREEN","size":"16x24 in","po":"T4-001","ppc":24,"poly":"5061099980296","cartonBarcode":"15061099980293","totalCtns":10,"totalPacks":240,"ctnsIn":7,"packsIn":186},{"sku":"HB-C-TWL-400-MG-61","color":"MOSS GREEN","size":"27x54 in","po":"T4-001","ppc":8,"poly":"5061099980302","cartonBarcode":"15061099980309","totalCtns":10,"totalPacks":80,"ctnsIn":7,"packsIn":56},{"sku":"HB-C-TWL-400-MG-8M","color":"MOSS GREEN","size":"8 PC SET","po":"T4-001","ppc":12,"poly":"5061099980319","cartonBarcode":"15061099980316","totalCtns":10,"totalPacks":120,"ctnsIn":8,"packsIn":105},{"sku":"HB-C-TWL-400-SGY-33","color":"STEEL GREY","size":"12x12 in","po":"T4-001","ppc":24,"poly":"5061099980326","cartonBarcode":"15061099980323","totalCtns":9,"totalPacks":216,"ctnsIn":8,"packsIn":192},{"sku":"HB-C-TWL-400-SGY-46","color":"STEEL GREY","size":"16x24 in","po":"T4-001","ppc":24,"poly":"5061099980333","cartonBarcode":"15061099980330","totalCtns":30,"totalPacks":720,"ctnsIn":28,"packsIn":687},{"sku":"HB-C-TWL-400-SGY-61","color":"STEEL GREY","size":"27x54 in","po":"T4-001","ppc":8,"poly":"5061099980340","cartonBarcode":"15061099980347","totalCtns":30,"totalPacks":240,"ctnsIn":26,"packsIn":212},{"sku":"HB-C-TWL-400-SGY-8M","color":"STEEL GREY","size":"8 PC SET","po":"T4-001","ppc":12,"poly":"5061099980357","cartonBarcode":"15061099980354","totalCtns":10,"totalPacks":120,"ctnsIn":7,"packsIn":92},{"sku":"HB-C-TWL-400-ST-33","color":"SOFT TEAL","size":"12x12 in","po":"T4-001","ppc":24,"poly":"5061099980364","cartonBarcode":"15061099980361","totalCtns":4,"totalPacks":96,"ctnsIn":1,"packsIn":24},{"sku":"HB-C-TWL-400-ST-46","color":"SOFT TEAL","size":"16x24 in","po":"T4-001","ppc":24,"poly":"5061099980371","cartonBarcode":"15061099980378","totalCtns":8,"totalPacks":192,"ctnsIn":6,"packsIn":166},{"sku":"HB-C-TWL-400-ST-61","color":"SOFT TEAL","size":"27x54 in","po":"T4-001","ppc":8,"poly":"5061099980388","cartonBarcode":"15061099980385","totalCtns":8,"totalPacks":64,"ctnsIn":5,"packsIn":40},{"sku":"HB-C-TWL-400-ST-8M","color":"SOFT TEAL","size":"8 PC SET","po":"T4-001","ppc":12,"poly":"5061099980395","cartonBarcode":"15061099980392","totalCtns":5,"totalPacks":60,"ctnsIn":4,"packsIn":48},{"sku":"HB-C-TWL-400-W-33","color":"WHITE","size":"12x12 in","po":"T4-001","ppc":24,"poly":"5061099980401","cartonBarcode":"15061099980408","totalCtns":4,"totalPacks":96,"ctnsIn":2,"packsIn":63},{"sku":"HB-C-TWL-400-W-46","color":"WHITE","size":"16x24 in","po":"T4-001","ppc":24,"poly":"5061099980418","cartonBarcode":"15061099980415","totalCtns":10,"totalPacks":240,"ctnsIn":8,"packsIn":210},{"sku":"HB-C-TWL-400-W-61","color":"WHITE","size":"27x54 in","po":"T4-001","ppc":8,"poly":"5061099980425","cartonBarcode":"15061099980422","totalCtns":10,"totalPacks":80,"ctnsIn":7,"packsIn":63},{"sku":"HB-C-TWL-400-W-8M","color":"WHITE","size":"8 PC SET","po":"T4-001","ppc":12,"poly":"5061099980432","cartonBarcode":"15061099980439","totalCtns":10,"totalPacks":120,"ctnsIn":8,"packsIn":107},{"sku":"HB-L-TWL-500-DGY-33","color":"DARK GREY","size":"12x12 in","po":"T5-002","ppc":24,"poly":"5061099980005","cartonBarcode":"25061099980009","totalCtns":30,"totalPacks":720,"ctnsIn":30,"packsIn":720},{"sku":"HB-L-TWL-500-DGY-47","color":"DARK GREY","size":"16x28 in","po":"T5-002","ppc":16,"poly":"5061099980012","cartonBarcode":"15061099980019","totalCtns":19,"totalPacks":304,"ctnsIn":19,"packsIn":304},{"sku":"HB-L-TWL-500-DGY-61","color":"DARK GREY","size":"27x54 in","po":"T5-002","ppc":12,"poly":"5061099980029","cartonBarcode":"15061099980026","totalCtns":19,"totalPacks":228,"ctnsIn":19,"packsIn":228},{"sku":"HB-L-TWL-500-DGY-8M","color":"DARK GREY","size":"8 PC SET","po":"T5-002","ppc":8,"poly":"5061099980036","cartonBarcode":"15061099980033","totalCtns":19,"totalPacks":152,"ctnsIn":19,"packsIn":152},{"sku":"HB-L-TWL-500-IB-33","color":"ICE BLUE","size":"12x12 in","po":"T5-001","ppc":24,"poly":"5061099980043","cartonBarcode":"15061099980040","totalCtns":16,"totalPacks":336,"ctnsIn":12,"packsIn":288},{"sku":"HB-L-TWL-500-IB-47","color":"ICE BLUE","size":"16x28 in","po":"T5-001","ppc":16,"poly":"5061099980050","cartonBarcode":"15061099980057","totalCtns":18,"totalPacks":288,"ctnsIn":15,"packsIn":240},{"sku":"HB-L-TWL-500-IB-61","color":"ICE BLUE","size":"27x54 in","po":"T5-001","ppc":12,"poly":"5061099980067","cartonBarcode":"15061099980064","totalCtns":16,"totalPacks":192,"ctnsIn":12,"packsIn":144},{"sku":"HB-L-TWL-500-IB-8M","color":"ICE BLUE","size":"8 PC SET","po":"T5-001","ppc":8,"poly":"5061099980074","cartonBarcode":"15061099980071","totalCtns":13,"totalPacks":104,"ctnsIn":7,"packsIn":56},{"sku":"HB-L-TWL-500-NB-33","color":"NAVY BLUE","size":"12x12 in","po":"T5-002","ppc":24,"poly":"5061099980524","cartonBarcode":"25061099980528","totalCtns":15,"totalPacks":360,"ctnsIn":15,"packsIn":360},{"sku":"HB-L-TWL-500-NB-47","color":"NAVY BLUE","size":"16x28 in","po":"T5-002","ppc":16,"poly":"5061099980531","cartonBarcode":"15061099980538","totalCtns":14,"totalPacks":224,"ctnsIn":14,"packsIn":224},{"sku":"HB-L-TWL-500-NB-61","color":"NAVY BLUE","size":"27x54 in","po":"T5-002","ppc":12,"poly":"5061099980548","cartonBarcode":"15061099980545","totalCtns":12,"totalPacks":144,"ctnsIn":12,"packsIn":144},{"sku":"HB-L-TWL-500-NB-8M","color":"NAVY BLUE","size":"8 PC SET","po":"T5-002","ppc":8,"poly":"5061099980555","cartonBarcode":"15061099980552","totalCtns":11,"totalPacks":88,"ctnsIn":11,"packsIn":88},{"sku":"HB-L-TWL-500-S-33","color":"SAND","size":"12x12 in","po":"T5-001","ppc":24,"poly":"5061099980128","cartonBarcode":"15061099980125","totalCtns":19,"totalPacks":408,"ctnsIn":15,"packsIn":360},{"sku":"HB-L-TWL-500-S-47","color":"SAND","size":"16x28 in","po":"T5-001","ppc":16,"poly":"5061099980135","cartonBarcode":"15061099980132","totalCtns":8,"totalPacks":128,"ctnsIn":5,"packsIn":80},{"sku":"HB-L-TWL-500-S-61","color":"SAND","size":"27x54 in","po":"T5-001","ppc":12,"poly":"5061099980142","cartonBarcode":"15061099980149","totalCtns":16,"totalPacks":192,"ctnsIn":12,"packsIn":144},{"sku":"HB-L-TWL-500-S-8M","color":"SAND","size":"8 PC SET","po":"T5-001","ppc":8,"poly":"5061099980159","cartonBarcode":"15061099980156","totalCtns":16,"totalPacks":128,"ctnsIn":9,"packsIn":72},{"sku":"HB-L-TWL-500-SG-33","color":"SAGE GREEN","size":"12x12 in","po":"T5-001","ppc":24,"poly":"5061099980104","cartonBarcode":"15061099980101","totalCtns":19,"totalPacks":408,"ctnsIn":15,"packsIn":360},{"sku":"HB-L-TWL-500-SG-47","color":"SAGE GREEN","size":"16x28 in","po":"T5-001","ppc":16,"poly":"5061099980081","cartonBarcode":"15061099980088","totalCtns":23,"totalPacks":368,"ctnsIn":18,"packsIn":288},{"sku":"HB-L-TWL-500-SG-61","color":"SAGE GREEN","size":"27x54 in","po":"T5-001","ppc":12,"poly":"5061099980098","cartonBarcode":"15061099980095","totalCtns":14,"totalPacks":168,"ctnsIn":8,"packsIn":96},{"sku":"HB-L-TWL-500-SG-8M","color":"SAGE GREEN","size":"8 PC SET","po":"T5-001","ppc":8,"poly":"5061099980111","cartonBarcode":"15061099980118","totalCtns":21,"totalPacks":168,"ctnsIn":12,"packsIn":96},{"sku":"HB-L-TWL-500-STN-33","color":"STONE GREY","size":"12x12 in","po":"T5-001","ppc":24,"poly":"5061099980449","cartonBarcode":"15061099980446","totalCtns":14,"totalPacks":252,"ctnsIn":8,"packsIn":185},{"sku":"HB-L-TWL-500-STN-47","color":"STONE GREY","size":"16x28 in","po":"T5-001","ppc":16,"poly":"5061099980456","cartonBarcode":"15061099980453","totalCtns":19,"totalPacks":304,"ctnsIn":14,"packsIn":224},{"sku":"HB-L-TWL-500-STN-61","color":"STONE GREY","size":"27x54 in","po":"T5-001","ppc":12,"poly":"5061099980463","cartonBarcode":"15061099980460","totalCtns":21,"totalPacks":252,"ctnsIn":14,"packsIn":177},{"sku":"HB-L-TWL-500-STN-8M","color":"STONE GREY","size":"8 PC SET","po":"T5-001","ppc":8,"poly":"5061099980470","cartonBarcode":"15061099980477","totalCtns":31,"totalPacks":248,"ctnsIn":23,"packsIn":184},{"sku":"HB-L-TWL-500-VW-33","color":"VELVET WINE","size":"12x12 in","po":"T5-001","ppc":24,"poly":"5061099980166","cartonBarcode":"15061099980163","totalCtns":16,"totalPacks":336,"ctnsIn":12,"packsIn":295},{"sku":"HB-L-TWL-500-VW-47","color":"VELVET WINE","size":"16x28 in","po":"T5-001","ppc":16,"poly":"5061099980173","cartonBarcode":"15061099980170","totalCtns":18,"totalPacks":288,"ctnsIn":14,"packsIn":224},{"sku":"HB-L-TWL-500-VW-61","color":"VELVET WINE","size":"27x54 in","po":"T5-001","ppc":12,"poly":"5061099980180","cartonBarcode":"15061099980187","totalCtns":16,"totalPacks":192,"ctnsIn":10,"packsIn":120},{"sku":"HB-L-TWL-500-VW-8M","color":"VELVET WINE","size":"8 PC SET","po":"T5-001","ppc":8,"poly":"5061099980197","cartonBarcode":"15061099980194","totalCtns":10,"totalPacks":80,"ctnsIn":1,"packsIn":8},{"sku":"HB-L-TWL-500-W-33","color":"WHITE","size":"12x12 in","po":"T5-001","ppc":24,"poly":"5061099980203","cartonBarcode":"15061099980200","totalCtns":10,"totalPacks":192,"ctnsIn":6,"packsIn":144},{"sku":"HB-L-TWL-500-W-47","color":"WHITE","size":"16x28 in","po":"T5-001","ppc":16,"poly":"5061099980210","cartonBarcode":"15061099980217","totalCtns":10,"totalPacks":160,"ctnsIn":6,"packsIn":96},{"sku":"HB-L-TWL-500-W-61","color":"WHITE","size":"27x54 in","po":"T5-001","ppc":12,"poly":"5061099980227","cartonBarcode":"15061099980224","totalCtns":15,"totalPacks":180,"ctnsIn":9,"packsIn":119},{"sku":"HB-L-TWL-500-W-8M","color":"WHITE","size":"8 PC SET","po":"T5-001","ppc":8,"poly":"5061099980234","cartonBarcode":"15061099980231","totalCtns":12,"totalPacks":96,"ctnsIn":5,"packsIn":40},{"sku":"NM-TWL-500-A-33","color":"ANTHRAZIT","size":"12x12 in","po":"TWL-500-001","ppc":30,"poly":"4251590101868","cartonBarcode":"4251590116947","totalCtns":40,"totalPacks":1200,"ctnsIn":39,"packsIn":1192},{"sku":"NM-TWL-500-A-51","color":"ANTHRAZIT","size":"20x40 in","po":"TWL-500-001","ppc":8,"poly":"4260285685750","cartonBarcode":"4251590116961","totalCtns":20,"totalPacks":160,"ctnsIn":17,"packsIn":143},{"sku":"NM-TWL-500-A-71","color":"ANTHRAZIT","size":"27x54 in","po":"TWL-500-001","ppc":12,"poly":"4251590100472","cartonBarcode":"4251590116978","totalCtns":53,"totalPacks":636,"ctnsIn":49,"packsIn":588},{"sku":"NM-TWL-500-BK-33","color":"BLACK","size":"12x12 in","po":"TWL-500-001","ppc":30,"poly":"4251590102001","cartonBarcode":"4251590118293","totalCtns":20,"totalPacks":600,"ctnsIn":17,"packsIn":532},{"sku":"NM-TWL-500-BK-51","color":"BLACK","size":"20x40 in","po":"TWL-500-001","ppc":8,"poly":"4260285685774","cartonBarcode":"4251590118316","totalCtns":10,"totalPacks":80,"ctnsIn":10,"packsIn":80},{"sku":"NM-TWL-500-BK-71","color":"BLACK","size":"27x54 in","po":"TWL-500-001","ppc":12,"poly":"4251590100519","cartonBarcode":"4251590118323","totalCtns":31,"totalPacks":372,"ctnsIn":27,"packsIn":329},{"sku":"NM-TWL-500-NB-33","color":"NAVY BLUE","size":"12x12 in","po":"TWL-500-001","ppc":30,"poly":"4251590101943","cartonBarcode":"4251590117661","totalCtns":30,"totalPacks":900,"ctnsIn":28,"packsIn":867},{"sku":"NM-TWL-500-NB-51","color":"NAVY BLUE","size":"20x40 in","po":"TWL-500-001","ppc":8,"poly":"4260285685873","cartonBarcode":"4251590117685","totalCtns":10,"totalPacks":80,"ctnsIn":8,"packsIn":64},{"sku":"NM-TWL-500-NB-71","color":"NAVY BLUE","size":"27x54 in","po":"TWL-500-001","ppc":12,"poly":"4251590100380","cartonBarcode":"4251590117692","totalCtns":40,"totalPacks":480,"ctnsIn":37,"packsIn":448},{"sku":"NM-TWL-500-S-33","color":"SAND","size":"12x12 in","po":"TWL-500-001","ppc":30,"poly":"4251590101981","cartonBarcode":"4251590118118","totalCtns":19,"totalPacks":570,"ctnsIn":17,"packsIn":536},{"sku":"NM-TWL-500-S-51","color":"SAND","size":"20x40 in","po":"TWL-500-001","ppc":8,"poly":"4260285685811","cartonBarcode":"4251590118132","totalCtns":10,"totalPacks":80,"ctnsIn":7,"packsIn":56},{"sku":"NM-TWL-500-S-71","color":"SAND","size":"27x54 in","po":"TWL-500-001","ppc":12,"poly":"4251590100458","cartonBarcode":"4251590118149","totalCtns":28,"totalPacks":336,"ctnsIn":24,"packsIn":298},{"sku":"NM-TWL-500-W-33","color":"WHITE","size":"12x12 in","po":"TWL-500-001","ppc":30,"poly":"4251590102049","cartonBarcode":"4251590118651","totalCtns":20,"totalPacks":600,"ctnsIn":18,"packsIn":567},{"sku":"NM-TWL-500-W-51","color":"WHITE","size":"20x40 in","po":"TWL-500-001","ppc":8,"poly":"4260285685767","cartonBarcode":"4251590118675","totalCtns":10,"totalPacks":80,"ctnsIn":10,"packsIn":80},{"sku":"NM-TWL-500-W-71","color":"WHITE","size":"27x54 in","po":"TWL-500-001","ppc":12,"poly":"4251590100526","cartonBarcode":"4251590118682","totalCtns":30,"totalPacks":360,"ctnsIn":26,"packsIn":312}];
 
-let PALLET_DATA = {"1":{"NM-TWL-500-NB-33":{"fullCartons":21,"openPacks":27,"ppc":30,"color":"NAVY BLUE","size":"12x12 in","po":"TWL-500-001"}},"2":{"NM-TWL-500-S-33":{"fullCartons":17,"openPacks":26,"ppc":30,"color":"SAND","size":"12x12 in","po":"TWL-500-001"}},"3":{"NM-TWL-500-NB-71":{"fullCartons":18,"openPacks":4,"ppc":12,"color":"NAVY BLUE","size":"27x54 in","po":"TWL-500-001"}},"4":{"NM-TWL-500-S-71":{"fullCartons":15,"openPacks":10,"ppc":12,"color":"SAND","size":"27x54 in","po":"TWL-500-001"},"NM-TWL-500-NB-71":{"fullCartons":1,"openPacks":0,"ppc":12,"color":"NAVY BLUE","size":"27x54 in","po":"TWL-500-001"},"NM-TWL-500-A-71":{"fullCartons":1,"openPacks":0,"ppc":12,"color":"ANTHRAZIT","size":"27x54 in","po":"TWL-500-001"},"NM-TWL-500-W-71":{"fullCartons":1,"openPacks":0,"ppc":12,"color":"WHITE","size":"27x54 in","po":"TWL-500-001"}},"5":{"NM-TWL-500-NB-51":{"fullCartons":8,"openPacks":0,"ppc":8,"color":"NAVY BLUE","size":"20x40 in","po":"TWL-500-001"},"NM-TWL-500-NB-71":{"fullCartons":6,"openPacks":0,"ppc":12,"color":"NAVY BLUE","size":"27x54 in","po":"TWL-500-002"}},"6":{"NM-TWL-500-S-51":{"fullCartons":7,"openPacks":0,"ppc":8,"color":"SAND","size":"20x40 in","po":"TWL-500-001"},"NM-TWL-500-S-71":{"fullCartons":9,"openPacks":0,"ppc":12,"color":"SAND","size":"27x54 in","po":"TWL-500-002"}},"7":{"NM-TWL-500-A-33":{"fullCartons":20,"openPacks":0,"ppc":30,"color":"ANTHRAZIT","size":"12x12 in","po":"TWL-500-001"}},"8":{"NM-TWL-500-A-33":{"fullCartons":19,"openPacks":22,"ppc":30,"color":"ANTHRAZIT","size":"12x12 in","po":"TWL-500-001"}},"9":{"NM-TWL-500-A-71":{"fullCartons":18,"openPacks":0,"ppc":12,"color":"ANTHRAZIT","size":"27x54 in","po":"TWL-500-001"}},"10":{"NM-TWL-500-A-71":{"fullCartons":18,"openPacks":0,"ppc":12,"color":"ANTHRAZIT","size":"27x54 in","po":"TWL-500-001"}},"11":{"NM-TWL-500-A-51":{"fullCartons":12,"openPacks":0,"ppc":8,"color":"ANTHRAZIT","size":"20x40 in","po":"TWL-500-001"},"NM-TWL-500-A-71":{"fullCartons":1,"openPacks":0,"ppc":12,"color":"ANTHRAZIT","size":"27x54 in","po":"TWL-500-002"}},"12":{"NM-TWL-500-A-51":{"fullCartons":5,"openPacks":7,"ppc":8,"color":"ANTHRAZIT","size":"20x40 in","po":"TWL-500-001"},"NM-TWL-500-A-71":{"fullCartons":7,"openPacks":0,"ppc":12,"color":"ANTHRAZIT","size":"27x54 in","po":"TWL-500-002"}},"13":{"NM-TWL-500-W-33":{"fullCartons":18,"openPacks":27,"ppc":30,"color":"WHITE","size":"12x12 in","po":"TWL-500-001"}},"14":{"NM-TWL-500-BK-33":{"fullCartons":17,"openPacks":22,"ppc":30,"color":"BLACK","size":"12x12 in","po":"TWL-500-001"}},"15":{"NM-TWL-500-W-71":{"fullCartons":15,"openPacks":0,"ppc":12,"color":"WHITE","size":"27x54 in","po":"TWL-500-001"}},"16":{"NM-TWL-500-BK-71":{"fullCartons":18,"openPacks":5,"ppc":12,"color":"BLACK","size":"27x54 in","po":"TWL-500-001"}},"17":{"NM-TWL-500-W-51":{"fullCartons":10,"openPacks":0,"ppc":8,"color":"WHITE","size":"20x40 in","po":"TWL-500-001"},"NM-TWL-500-W-71":{"fullCartons":2,"openPacks":0,"ppc":12,"color":"WHITE","size":"27x54 in","po":"TWL-500-002"}},"18":{"NM-TWL-500-BK-51":{"fullCartons":10,"openPacks":0,"ppc":8,"color":"BLACK","size":"20x40 in","po":"TWL-500-001"},"NM-TWL-500-BK-71":{"fullCartons":2,"openPacks":0,"ppc":12,"color":"BLACK","size":"27x54 in","po":"TWL-500-002"}},"19":{"HB-C-TWL-400-DR-61":{"fullCartons":4,"openPacks":7,"ppc":8,"color":"DUNE RED","size":"27x54 in","po":"T4-001"},"HB-C-TWL-400-MG-61":{"fullCartons":3,"openPacks":0,"ppc":8,"color":"MOSS GREEN","size":"27x54 in","po":"T4-001"},"HB-C-TWL-400-SGY-61":{"fullCartons":11,"openPacks":4,"ppc":8,"color":"STEEL GREY","size":"27x54 in","po":"T4-001"},"HB-C-TWL-400-W-61":{"fullCartons":2,"openPacks":7,"ppc":8,"color":"WHITE","size":"27x54 in","po":"T4-001"},"HB-C-TWL-400-ST-61":{"fullCartons":3,"openPacks":0,"ppc":8,"color":"SOFT TEAL","size":"27x54 in","po":"T4-001"}},"20":{"HB-C-TWL-400-W-61":{"fullCartons":5,"openPacks":0,"ppc":8,"color":"WHITE","size":"27x54 in","po":"T4-001"},"HB-C-TWL-400-MG-61":{"fullCartons":4,"openPacks":0,"ppc":8,"color":"MOSS GREEN","size":"27x54 in","po":"T4-001"},"HB-C-TWL-400-SGY-61":{"fullCartons":15,"openPacks":0,"ppc":8,"color":"STEEL GREY","size":"27x54 in","po":"T4-001"},"HB-C-TWL-400-ST-61":{"fullCartons":2,"openPacks":0,"ppc":8,"color":"SOFT TEAL","size":"27x54 in","po":"T4-001"}},"21":{"HB-C-TWL-400-SGY-46":{"fullCartons":15,"openPacks":0,"ppc":24,"color":"STEEL GREY","size":"16x24 in","po":"T4-001"},"HB-C-TWL-400-MG-46":{"fullCartons":1,"openPacks":0,"ppc":24,"color":"MOSS GREEN","size":"16x24 in","po":"T4-001"},"HB-C-TWL-400-ST-46":{"fullCartons":3,"openPacks":0,"ppc":24,"color":"SOFT TEAL","size":"16x24 in","po":"T4-001"},"HB-C-TWL-400-W-46":{"fullCartons":1,"openPacks":0,"ppc":24,"color":"WHITE","size":"16x24 in","po":"T4-001"}},"22":{"HB-C-TWL-400-DR-46":{"fullCartons":3,"openPacks":20,"ppc":24,"color":"DUNE RED","size":"16x24 in","po":"T4-001"},"HB-C-TWL-400-ST-46":{"fullCartons":1,"openPacks":22,"ppc":24,"color":"SOFT TEAL","size":"16x24 in","po":"T4-001"},"HB-C-TWL-400-W-46":{"fullCartons":3,"openPacks":18,"ppc":24,"color":"WHITE","size":"16x24 in","po":"T4-001"},"HB-C-TWL-400-SGY-46":{"fullCartons":5,"openPacks":15,"ppc":24,"color":"STEEL GREY","size":"16x24 in","po":"T4-001"},"HB-C-TWL-400-MG-46":{"fullCartons":3,"openPacks":18,"ppc":24,"color":"MOSS GREEN","size":"16x24 in","po":"T4-001"}},"23":{"HB-C-TWL-400-MG-8M":{"fullCartons":5,"openPacks":9,"ppc":12,"color":"MOSS GREEN","size":"8 PC SET","po":"T4-001"},"HB-C-TWL-400-W-8M":{"fullCartons":6,"openPacks":11,"ppc":12,"color":"WHITE","size":"8 PC SET","po":"T4-001"},"HB-C-TWL-400-SGY-8M":{"fullCartons":1,"openPacks":8,"ppc":12,"color":"STEEL GREY","size":"8 PC SET","po":"T4-001"},"HB-C-TWL-400-DR-8M":{"fullCartons":0,"openPacks":10,"ppc":12,"color":"DUNE RED","size":"8 PC SET","po":"T4-001"}},"24":{"HB-C-TWL-400-DR-8M":{"fullCartons":3,"openPacks":0,"ppc":12,"color":"DUNE RED","size":"8 PC SET","po":"T4-001"},"HB-C-TWL-400-W-8M":{"fullCartons":2,"openPacks":0,"ppc":12,"color":"WHITE","size":"8 PC SET","po":"T4-001"},"HB-C-TWL-400-SGY-8M":{"fullCartons":6,"openPacks":0,"ppc":12,"color":"STEEL GREY","size":"8 PC SET","po":"T4-001"},"HB-C-TWL-400-MG-8M":{"fullCartons":3,"openPacks":0,"ppc":12,"color":"MOSS GREEN","size":"8 PC SET","po":"T4-001"},"HB-C-TWL-400-ST-8M":{"fullCartons":3,"openPacks":0,"ppc":12,"color":"SOFT TEAL","size":"8 PC SET","po":"T4-001"}},"25":{"GM-TWL-400-W-71":{"fullCartons":38,"openPacks":0,"ppc":8,"color":"WHITE","size":"27x54 in","po":"TWL-400-001"}},"26":{"GM-TWL-400-S-71":{"fullCartons":27,"openPacks":7,"ppc":8,"color":"SAND","size":"27x54 in","po":"TWL-400-001"}},"27":{"GM-TWL-400-A-71":{"fullCartons":34,"openPacks":0,"ppc":8,"color":"ANTHRAZIT","size":"27x54 in","po":"TWL-400-001"}},"28":{"GM-TWL-400-W-51":{"fullCartons":16,"openPacks":0,"ppc":8,"color":"WHITE","size":"20x40 in","po":"TWL-400-001"}},"29":{"GM-TWL-400-S-51":{"fullCartons":8,"openPacks":0,"ppc":8,"color":"SAND","size":"20x40 in","po":"TWL-400-001"},"GM-TWL-400-W-51":{"fullCartons":1,"openPacks":7,"ppc":8,"color":"WHITE","size":"20x40 in","po":"TWL-400-001"},"GM-TWL-400-A-51":{"fullCartons":1,"openPacks":7,"ppc":8,"color":"ANTHRAZIT","size":"20x40 in","po":"TWL-400-001"}},"30":{"GM-TWL-400-A-51":{"fullCartons":16,"openPacks":0,"ppc":8,"color":"ANTHRAZIT","size":"20x40 in","po":"TWL-400-001"}},"31":{"NM-TWL-500-BK-71":{"fullCartons":7,"openPacks":0,"ppc":12,"color":"BLACK","size":"27x54 in","po":"TWL-500-002"},"NM-TWL-500-NB-71":{"fullCartons":12,"openPacks":0,"ppc":12,"color":"NAVY BLUE","size":"27x54 in","po":"TWL-500-002"}},"32":{"NM-TWL-500-A-71":{"fullCartons":4,"openPacks":0,"ppc":12,"color":"ANTHRAZIT","size":"27x54 in","po":"TWL-500-002"},"NM-TWL-500-NB-33":{"fullCartons":7,"openPacks":0,"ppc":30,"color":"NAVY BLUE","size":"12x12 in","po":"TWL-500-002"},"NM-TWL-500-W-71":{"fullCartons":8,"openPacks":0,"ppc":12,"color":"WHITE","size":"27x54 in","po":"TWL-500-002"}},"33":{"HB-L-TWL-500-S-8M":{"fullCartons":3,"openPacks":0,"ppc":8,"color":"SAND","size":"8 PC SET","po":"T5-001"},"HB-L-TWL-500-STN-8M":{"fullCartons":10,"openPacks":0,"ppc":8,"color":"STONE GREY","size":"8 PC SET","po":"T5-001"},"HB-C-TWL-400-ST-8M":{"fullCartons":1,"openPacks":0,"ppc":12,"color":"SOFT TEAL","size":"8 PC SET","po":"T4-001"},"HB-C-TWL-400-DR-61":{"fullCartons":1,"openPacks":0,"ppc":8,"color":"DUNE RED","size":"27x54 in","po":"T4-001"},"HB-L-TWL-500-VW-8M":{"fullCartons":1,"openPacks":0,"ppc":8,"color":"VELVET WINE","size":"8 PC SET","po":"T5-001"},"HB-L-TWL-500-W-8M":{"fullCartons":1,"openPacks":0,"ppc":8,"color":"WHITE","size":"8 PC SET","po":"T5-001"},"HB-L-TWL-500-SG-8M":{"fullCartons":1,"openPacks":0,"ppc":8,"color":"SAGE GREEN","size":"8 PC SET","po":"T5-001"}},"34":{"HB-L-TWL-500-IB-8M":{"fullCartons":4,"openPacks":0,"ppc":8,"color":"ICE BLUE","size":"8 PC SET","po":"T5-001"},"HB-L-TWL-500-STN-8M":{"fullCartons":12,"openPacks":0,"ppc":8,"color":"STONE GREY","size":"8 PC SET","po":"T5-001"},"HB-L-TWL-500-W-8M":{"fullCartons":2,"openPacks":0,"ppc":8,"color":"WHITE","size":"8 PC SET","po":"T5-001"}},"35":{"HB-L-TWL-500-STN-47":{"fullCartons":10,"openPacks":0,"ppc":16,"color":"STONE GREY","size":"16x28 in","po":"T5-001"},"HB-L-TWL-500-W-47":{"fullCartons":1,"openPacks":0,"ppc":16,"color":"WHITE","size":"16x28 in","po":"T5-001"},"HB-L-TWL-500-VW-47":{"fullCartons":1,"openPacks":0,"ppc":16,"color":"VELVET WINE","size":"16x28 in","po":"T5-001"},"HB-L-TWL-500-STN-33":{"fullCartons":1,"openPacks":5,"ppc":12,"color":"STONE GREY","size":"12x12 in","po":"T5-001"},"HB-L-TWL-500-VW-33":{"fullCartons":0,"openPacks":7,"ppc":12,"color":"VELVET WINE","size":"12x12 in","po":"T5-001"},"HB-L-TWL-500-DGY-61":{"fullCartons":9,"openPacks":0,"ppc":12,"color":"DARK GREY","size":"27x54 in","po":"T5-002"},"HB-L-TWL-500-NB-61":{"fullCartons":3,"openPacks":0,"ppc":12,"color":"NAVY BLUE","size":"27x54 in","po":"T5-002"}},"36":{"HB-L-TWL-500-STN-61":{"fullCartons":9,"openPacks":9,"ppc":12,"color":"STONE GREY","size":"27x54 in","po":"T5-001"},"HB-L-TWL-500-W-61":{"fullCartons":0,"openPacks":11,"ppc":12,"color":"WHITE","size":"27x54 in","po":"T5-001"},"HB-L-TWL-500-DGY-61":{"fullCartons":3,"openPacks":0,"ppc":12,"color":"DARK GREY","size":"27x54 in","po":"T5-002"},"HB-L-TWL-500-NB-61":{"fullCartons":6,"openPacks":0,"ppc":12,"color":"NAVY BLUE","size":"27x54 in","po":"T5-002"},"HB-L-TWL-500-SG-61":{"fullCartons":5,"openPacks":0,"ppc":12,"color":"SAGE GREEN","size":"27x54 in","po":"T5-002"}},"37":{"HB-L-TWL-500-SG-33":{"fullCartons":15,"openPacks":0,"ppc":24,"color":"SAGE GREEN","size":"12x12 in","po":"T5-002"}},"38":{"HB-L-TWL-500-VW-33":{"fullCartons":12,"openPacks":0,"ppc":24,"color":"VELVET WINE","size":"12x12 in","po":"T5-002"}},"39":{"HB-L-TWL-500-IB-33":{"fullCartons":12,"openPacks":0,"ppc":24,"color":"ICE BLUE","size":"12x12 in","po":"T5-002"}},"40":{"HB-L-TWL-500-DGY-33":{"fullCartons":15,"openPacks":0,"ppc":24,"color":"DARK GREY","size":"12x12 in","po":"T5-002"}},"41":{"HB-L-TWL-500-DGY-33":{"fullCartons":15,"openPacks":0,"ppc":24,"color":"DARK GREY","size":"12x12 in","po":"T5-002"}},"42":{"HB-L-TWL-500-S-33":{"fullCartons":15,"openPacks":0,"ppc":24,"color":"SAND","size":"12x12 in","po":"T5-002"}},"43":{"HB-L-TWL-500-STN-33":{"fullCartons":7,"openPacks":0,"ppc":24,"color":"STONE GREY","size":"12x12 in","po":"T5-002"},"HB-L-TWL-500-W-33":{"fullCartons":6,"openPacks":0,"ppc":24,"color":"WHITE","size":"12x12 in","po":"T5-002"}},"44":{"HB-L-TWL-500-NB-33":{"fullCartons":15,"openPacks":0,"ppc":24,"color":"NAVY BLUE","size":"12x12 in","po":"T5-002"}},"47":{"HB-L-TWL-500-NB-47":{"fullCartons":14,"openPacks":0,"ppc":16,"color":"NAVY BLUE","size":"16x28 in","po":"T5-002"},"HB-L-TWL-500-STN-47":{"fullCartons":3,"openPacks":0,"ppc":16,"color":"STONE GREY","size":"16x28 in","po":"T5-002"},"HB-L-TWL-500-VW-47":{"fullCartons":1,"openPacks":0,"ppc":16,"color":"VELVET WINE","size":"16x28 in","po":"T5-002"}},"48":{"HB-L-TWL-500-DGY-47":{"fullCartons":7,"openPacks":0,"ppc":16,"color":"DARK GREY","size":"16x28 in","po":"T5-002"},"HB-L-TWL-500-IB-47":{"fullCartons":2,"openPacks":0,"ppc":16,"color":"ICE BLUE","size":"16x28 in","po":"T5-002"},"HB-L-TWL-500-S-47":{"fullCartons":4,"openPacks":0,"ppc":16,"color":"SAND","size":"16x28 in","po":"T5-002"},"HB-L-TWL-500-STN-47":{"fullCartons":1,"openPacks":0,"ppc":16,"color":"STONE GREY","size":"16x28 in","po":"T5-002"},"HB-L-TWL-500-VW-47":{"fullCartons":1,"openPacks":0,"ppc":16,"color":"VELVET WINE","size":"16x28 in","po":"T5-002"}},"51":{"HB-C-TWL-400-SGY-33":{"fullCartons":8,"openPacks":0,"ppc":24,"color":"STEEL GREY","size":"12x12 in","po":"T4-001"},"HB-C-TWL-400-DR-33":{"fullCartons":3,"openPacks":0,"ppc":24,"color":"DUNE RED","size":"12x12 in","po":"T4-001"},"HB-C-TWL-400-W-33":{"fullCartons":2,"openPacks":15,"ppc":24,"color":"WHITE","size":"12x12 in","po":"T4-001"},"HB-C-TWL-400-ST-33":{"fullCartons":1,"openPacks":0,"ppc":24,"color":"SOFT TEAL","size":"12x12 in","po":"T4-001"},"HB-C-TWL-400-MG-33":{"fullCartons":2,"openPacks":23,"ppc":24,"color":"MOSS GREEN","size":"12x12 in","po":"T4-001"}},"52":{"HB-C-TWL-400-DR-46":{"fullCartons":4,"openPacks":0,"ppc":24,"color":"DUNE RED","size":"16x24 in","po":"T4-001"},"HB-C-TWL-400-SGY-46":{"fullCartons":8,"openPacks":0,"ppc":24,"color":"STEEL GREY","size":"16x24 in","po":"T4-001"},"HB-C-TWL-400-MG-46":{"fullCartons":3,"openPacks":0,"ppc":24,"color":"MOSS GREEN","size":"16x24 in","po":"T4-001"},"HB-C-TWL-400-W-46":{"fullCartons":4,"openPacks":0,"ppc":24,"color":"WHITE","size":"16x24 in","po":"T4-001"},"HB-C-TWL-400-ST-46":{"fullCartons":2,"openPacks":0,"ppc":24,"color":"SOFT TEAL","size":"16x24 in","po":"T4-001"}},"53":{"HB-L-TWL-500-DGY-47":{"fullCartons":2,"openPacks":0,"ppc":16,"color":"DARK GREY","size":"16x28 in","po":"T5-002"},"HB-L-TWL-500-IB-47":{"fullCartons":3,"openPacks":0,"ppc":16,"color":"ICE BLUE","size":"16x28 in","po":"T5-002"},"HB-L-TWL-500-S-47":{"fullCartons":1,"openPacks":0,"ppc":16,"color":"SAND","size":"16x28 in","po":"T5-002"},"HB-L-TWL-500-SG-47":{"fullCartons":6,"openPacks":0,"ppc":16,"color":"SAGE GREEN","size":"16x28 in","po":"T5-002"},"HB-L-TWL-500-VW-47":{"fullCartons":3,"openPacks":0,"ppc":16,"color":"VELVET WINE","size":"16x28 in","po":"T5-002"}},"54":{"HB-L-TWL-500-DGY-47":{"fullCartons":2,"openPacks":0,"ppc":16,"color":"DARK GREY","size":"16x28 in","po":"T5-002"},"HB-L-TWL-500-IB-47":{"fullCartons":4,"openPacks":0,"ppc":16,"color":"ICE BLUE","size":"16x28 in","po":"T5-002"},"HB-L-TWL-500-SG-47":{"fullCartons":4,"openPacks":0,"ppc":16,"color":"SAGE GREEN","size":"16x28 in","po":"T5-002"},"HB-L-TWL-500-VW-47":{"fullCartons":5,"openPacks":0,"ppc":16,"color":"VELVET WINE","size":"16x28 in","po":"T5-002"}},"59":{"HB-L-TWL-500-DGY-47":{"fullCartons":2,"openPacks":0,"ppc":16,"color":"DARK GREY","size":"16x28 in","po":"T5-002"},"HB-L-TWL-500-IB-47":{"fullCartons":4,"openPacks":0,"ppc":16,"color":"ICE BLUE","size":"16x28 in","po":"T5-002"},"HB-L-TWL-500-SG-47":{"fullCartons":8,"openPacks":0,"ppc":16,"color":"SAGE GREEN","size":"16x28 in","po":"T5-002"},"HB-L-TWL-500-VW-47":{"fullCartons":1,"openPacks":0,"ppc":16,"color":"VELVET WINE","size":"16x28 in","po":"T5-002"}},"60":{"HB-L-TWL-500-DGY-47":{"fullCartons":6,"openPacks":0,"ppc":16,"color":"DARK GREY","size":"16x28 in","po":"T5-002"},"HB-L-TWL-500-IB-47":{"fullCartons":2,"openPacks":0,"ppc":16,"color":"ICE BLUE","size":"16x28 in","po":"T5-002"},"HB-L-TWL-500-VW-47":{"fullCartons":2,"openPacks":0,"ppc":16,"color":"VELVET WINE","size":"16x28 in","po":"T5-002"},"HB-L-TWL-500-W-47":{"fullCartons":5,"openPacks":0,"ppc":16,"color":"WHITE","size":"16x28 in","po":"T5-002"}},"65":{"HB-L-TWL-500-DGY-8M":{"fullCartons":4,"openPacks":0,"ppc":8,"color":"DARK GREY","size":"8 PC SET","po":"T5-002"},"HB-L-TWL-500-IB-8M":{"fullCartons":2,"openPacks":0,"ppc":8,"color":"ICE BLUE","size":"8 PC SET","po":"T5-002"},"HB-L-TWL-500-NB-8M":{"fullCartons":6,"openPacks":0,"ppc":8,"color":"NAVY BLUE","size":"8 PC SET","po":"T5-002"},"HB-L-TWL-500-S-8M":{"fullCartons":3,"openPacks":0,"ppc":8,"color":"SAND","size":"8 PC SET","po":"T5-002"},"HB-L-TWL-500-SG-8M":{"fullCartons":3,"openPacks":0,"ppc":8,"color":"SAGE GREEN","size":"8 PC SET","po":"T5-002"},"HB-L-TWL-500-W-8M":{"fullCartons":2,"openPacks":0,"ppc":8,"color":"WHITE","size":"8 PC SET","po":"T5-002"}},"66":{"HB-L-TWL-500-DGY-8M":{"fullCartons":8,"openPacks":0,"ppc":8,"color":"DARK GREY","size":"8 PC SET","po":"T5-002"},"HB-L-TWL-500-IB-8M":{"fullCartons":1,"openPacks":0,"ppc":8,"color":"ICE BLUE","size":"8 PC SET","po":"T5-002"},"HB-L-TWL-500-NB-8M":{"fullCartons":4,"openPacks":0,"ppc":8,"color":"NAVY BLUE","size":"8 PC SET","po":"T5-002"},"HB-L-TWL-500-S-8M":{"fullCartons":2,"openPacks":0,"ppc":8,"color":"SAND","size":"8 PC SET","po":"T5-002"},"HB-L-TWL-500-SG-8M":{"fullCartons":5,"openPacks":0,"ppc":8,"color":"SAGE GREEN","size":"8 PC SET","po":"T5-002"}},"71":{"HB-L-TWL-500-DGY-61":{"fullCartons":1,"openPacks":0,"ppc":12,"color":"DARK GREY","size":"27x54 in","po":"T5-002"},"HB-L-TWL-500-DGY-8M":{"fullCartons":7,"openPacks":0,"ppc":8,"color":"DARK GREY","size":"8 PC SET","po":"T5-002"},"HB-L-TWL-500-NB-8M":{"fullCartons":1,"openPacks":0,"ppc":8,"color":"NAVY BLUE","size":"8 PC SET","po":"T5-002"},"HB-L-TWL-500-S-8M":{"fullCartons":1,"openPacks":0,"ppc":8,"color":"SAND","size":"8 PC SET","po":"T5-002"},"HB-L-TWL-500-SG-61":{"fullCartons":1,"openPacks":0,"ppc":12,"color":"SAGE GREEN","size":"27x54 in","po":"T5-002"},"HB-L-TWL-500-SG-8M":{"fullCartons":3,"openPacks":0,"ppc":8,"color":"SAGE GREEN","size":"8 PC SET","po":"T5-002"},"HB-L-TWL-500-STN-61":{"fullCartons":1,"openPacks":0,"ppc":12,"color":"STONE GREY","size":"27x54 in","po":"T5-002"},"HB-L-TWL-500-STN-8M":{"fullCartons":1,"openPacks":0,"ppc":8,"color":"STONE GREY","size":"8 PC SET","po":"T5-002"}},"72":{"HB-L-TWL-500-IB-61":{"fullCartons":2,"openPacks":0,"ppc":12,"color":"ICE BLUE","size":"27x54 in","po":"T5-002"},"HB-L-TWL-500-S-61":{"fullCartons":9,"openPacks":0,"ppc":12,"color":"SAND","size":"27x54 in","po":"T5-002"},"HB-L-TWL-500-W-61":{"fullCartons":9,"openPacks":0,"ppc":12,"color":"WHITE","size":"27x54 in","po":"T5-002"}},"77":{"HB-L-TWL-500-DGY-61":{"fullCartons":5,"openPacks":0,"ppc":12,"color":"DARK GREY","size":"27x54 in","po":"T5-002"},"HB-L-TWL-500-IB-61":{"fullCartons":3,"openPacks":0,"ppc":12,"color":"ICE BLUE","size":"27x54 in","po":"T5-002"},"HB-L-TWL-500-NB-61":{"fullCartons":1,"openPacks":0,"ppc":12,"color":"NAVY BLUE","size":"27x54 in","po":"T5-002"},"HB-L-TWL-500-SG-61":{"fullCartons":2,"openPacks":0,"ppc":12,"color":"SAGE GREEN","size":"27x54 in","po":"T5-002"},"HB-L-TWL-500-VW-61":{"fullCartons":7,"openPacks":0,"ppc":12,"color":"VELVET WINE","size":"27x54 in","po":"T5-002"}},"78":{"HB-L-TWL-500-DGY-61":{"fullCartons":1,"openPacks":0,"ppc":12,"color":"DARK GREY","size":"27x54 in","po":"T5-002"},"HB-L-TWL-500-IB-61":{"fullCartons":7,"openPacks":0,"ppc":12,"color":"ICE BLUE","size":"27x54 in","po":"T5-002"},"HB-L-TWL-500-NB-61":{"fullCartons":2,"openPacks":0,"ppc":12,"color":"NAVY BLUE","size":"27x54 in","po":"T5-002"},"HB-L-TWL-500-S-61":{"fullCartons":3,"openPacks":0,"ppc":12,"color":"SAND","size":"27x54 in","po":"T5-002"},"HB-L-TWL-500-STN-61":{"fullCartons":4,"openPacks":0,"ppc":12,"color":"STONE GREY","size":"27x54 in","po":"T5-002"},"HB-L-TWL-500-VW-61":{"fullCartons":3,"openPacks":0,"ppc":12,"color":"VELVET WINE","size":"27x54 in","po":"T5-002"}}};
+let PALLET_DATA = {"1":{"NM-TWL-500-NB-33":{"fullCartons":21,"openPacks":27,"ppc":30,"color":"NAVY BLUE","size":"12x12 in","po":"TWL-500-001"}},"2":{"NM-TWL-500-S-33":{"fullCartons":17,"openPacks":26,"ppc":30,"color":"SAND","size":"12x12 in","po":"TWL-500-001"}},"3":{"NM-TWL-500-NB-71":{"fullCartons":18,"openPacks":4,"ppc":12,"color":"NAVY BLUE","size":"27x54 in","po":"TWL-500-001"}},"4":{"NM-TWL-500-S-71":{"fullCartons":15,"openPacks":10,"ppc":12,"color":"SAND","size":"27x54 in","po":"TWL-500-001"},"NM-TWL-500-NB-71":{"fullCartons":1,"openPacks":0,"ppc":12,"color":"NAVY BLUE","size":"27x54 in","po":"TWL-500-001"},"NM-TWL-500-A-71":{"fullCartons":1,"openPacks":0,"ppc":12,"color":"ANTHRAZIT","size":"27x54 in","po":"TWL-500-001"},"NM-TWL-500-W-71":{"fullCartons":1,"openPacks":0,"ppc":12,"color":"WHITE","size":"27x54 in","po":"TWL-500-001"}},"5":{"NM-TWL-500-NB-51":{"fullCartons":8,"openPacks":0,"ppc":8,"color":"NAVY BLUE","size":"20x40 in","po":"TWL-500-001"},"NM-TWL-500-NB-71":{"fullCartons":6,"openPacks":0,"ppc":12,"color":"NAVY BLUE","size":"27x54 in","po":"TWL-500-002"}},"6":{"NM-TWL-500-S-51":{"fullCartons":7,"openPacks":0,"ppc":8,"color":"SAND","size":"20x40 in","po":"TWL-500-001"},"NM-TWL-500-S-71":{"fullCartons":9,"openPacks":0,"ppc":12,"color":"SAND","size":"27x54 in","po":"TWL-500-002"}},"7":{"NM-TWL-500-A-33":{"fullCartons":20,"openPacks":0,"ppc":30,"color":"ANTHRAZIT","size":"12x12 in","po":"TWL-500-001"}},"8":{"NM-TWL-500-A-33":{"fullCartons":19,"openPacks":22,"ppc":30,"color":"ANTHRAZIT","size":"12x12 in","po":"TWL-500-001"}},"9":{"NM-TWL-500-A-71":{"fullCartons":18,"openPacks":0,"ppc":12,"color":"ANTHRAZIT","size":"27x54 in","po":"TWL-500-001"}},"10":{"NM-TWL-500-A-71":{"fullCartons":18,"openPacks":0,"ppc":12,"color":"ANTHRAZIT","size":"27x54 in","po":"TWL-500-001"}},"11":{"NM-TWL-500-A-51":{"fullCartons":12,"openPacks":0,"ppc":8,"color":"ANTHRAZIT","size":"20x40 in","po":"TWL-500-001"},"NM-TWL-500-A-71":{"fullCartons":1,"openPacks":0,"ppc":12,"color":"ANTHRAZIT","size":"27x54 in","po":"TWL-500-002"}},"12":{"NM-TWL-500-A-51":{"fullCartons":5,"openPacks":7,"ppc":8,"color":"ANTHRAZIT","size":"20x40 in","po":"TWL-500-001"},"NM-TWL-500-A-71":{"fullCartons":7,"openPacks":0,"ppc":12,"color":"ANTHRAZIT","size":"27x54 in","po":"TWL-500-002"}},"13":{"NM-TWL-500-W-33":{"fullCartons":18,"openPacks":27,"ppc":30,"color":"WHITE","size":"12x12 in","po":"TWL-500-001"}},"14":{"NM-TWL-500-BK-33":{"fullCartons":17,"openPacks":22,"ppc":30,"color":"BLACK","size":"12x12 in","po":"TWL-500-001"}},"15":{"NM-TWL-500-W-71":{"fullCartons":15,"openPacks":0,"ppc":12,"color":"WHITE","size":"27x54 in","po":"TWL-500-001"}},"16":{"NM-TWL-500-BK-71":{"fullCartons":18,"openPacks":5,"ppc":12,"color":"BLACK","size":"27x54 in","po":"TWL-500-001"}},"17":{"NM-TWL-500-W-51":{"fullCartons":10,"openPacks":0,"ppc":8,"color":"WHITE","size":"20x40 in","po":"TWL-500-001"},"NM-TWL-500-W-71":{"fullCartons":2,"openPacks":0,"ppc":12,"color":"WHITE","size":"27x54 in","po":"TWL-500-002"}},"18":{"NM-TWL-500-BK-51":{"fullCartons":10,"openPacks":0,"ppc":8,"color":"BLACK","size":"20x40 in","po":"TWL-500-001"},"NM-TWL-500-BK-71":{"fullCartons":2,"openPacks":0,"ppc":12,"color":"BLACK","size":"27x54 in","po":"TWL-500-002"}},"19":{"HB-C-TWL-400-DR-61":{"fullCartons":4,"openPacks":7,"ppc":8,"color":"DUNE RED","size":"27x54 in","po":"T4-001"},"HB-C-TWL-400-MG-61":{"fullCartons":3,"openPacks":0,"ppc":8,"color":"MOSS GREEN","size":"27x54 in","po":"T4-001"},"HB-C-TWL-400-SGY-61":{"fullCartons":11,"openPacks":4,"ppc":8,"color":"STEEL GREY","size":"27x54 in","po":"T4-001"},"HB-C-TWL-400-W-61":{"fullCartons":2,"openPacks":7,"ppc":8,"color":"WHITE","size":"27x54 in","po":"T4-001"},"HB-C-TWL-400-ST-61":{"fullCartons":3,"openPacks":0,"ppc":8,"color":"SOFT TEAL","size":"27x54 in","po":"T4-001"}},"20":{"HB-C-TWL-400-W-61":{"fullCartons":5,"openPacks":0,"ppc":8,"color":"WHITE","size":"27x54 in","po":"T4-001"},"HB-C-TWL-400-MG-61":{"fullCartons":4,"openPacks":0,"ppc":8,"color":"MOSS GREEN","size":"27x54 in","po":"T4-001"},"HB-C-TWL-400-SGY-61":{"fullCartons":15,"openPacks":0,"ppc":8,"color":"STEEL GREY","size":"27x54 in","po":"T4-001"},"HB-C-TWL-400-ST-61":{"fullCartons":2,"openPacks":0,"ppc":8,"color":"SOFT TEAL","size":"27x54 in","po":"T4-001"}},"21":{"HB-C-TWL-400-SGY-46":{"fullCartons":15,"openPacks":0,"ppc":24,"color":"STEEL GREY","size":"16x24 in","po":"T4-001"},"HB-C-TWL-400-MG-46":{"fullCartons":1,"openPacks":0,"ppc":24,"color":"MOSS GREEN","size":"16x24 in","po":"T4-001"},"HB-C-TWL-400-ST-46":{"fullCartons":3,"openPacks":0,"ppc":24,"color":"SOFT TEAL","size":"16x24 in","po":"T4-001"},"HB-C-TWL-400-W-46":{"fullCartons":1,"openPacks":0,"ppc":24,"color":"WHITE","size":"16x24 in","po":"T4-001"}},"22":{"HB-C-TWL-400-DR-46":{"fullCartons":3,"openPacks":20,"ppc":24,"color":"DUNE RED","size":"16x24 in","po":"T4-001"},"HB-C-TWL-400-ST-46":{"fullCartons":1,"openPacks":22,"ppc":24,"color":"SOFT TEAL","size":"16x24 in","po":"T4-001"},"HB-C-TWL-400-W-46":{"fullCartons":3,"openPacks":18,"ppc":24,"color":"WHITE","size":"16x24 in","po":"T4-001"},"HB-C-TWL-400-SGY-46":{"fullCartons":5,"openPacks":15,"ppc":24,"color":"STEEL GREY","size":"16x24 in","po":"T4-001"},"HB-C-TWL-400-MG-46":{"fullCartons":3,"openPacks":18,"ppc":24,"color":"MOSS GREEN","size":"16x24 in","po":"T4-001"}},"23":{"HB-C-TWL-400-MG-8M":{"fullCartons":5,"openPacks":9,"ppc":12,"color":"MOSS GREEN","size":"8 PC SET","po":"T4-001"},"HB-C-TWL-400-W-8M":{"fullCartons":6,"openPacks":11,"ppc":12,"color":"WHITE","size":"8 PC SET","po":"T4-001"},"HB-C-TWL-400-SGY-8M":{"fullCartons":1,"openPacks":8,"ppc":12,"color":"STEEL GREY","size":"8 PC SET","po":"T4-001"},"HB-C-TWL-400-DR-8M":{"fullCartons":0,"openPacks":10,"ppc":12,"color":"DUNE RED","size":"8 PC SET","po":"T4-001"}},"24":{"HB-C-TWL-400-DR-8M":{"fullCartons":3,"openPacks":0,"ppc":12,"color":"DUNE RED","size":"8 PC SET","po":"T4-001"},"HB-C-TWL-400-W-8M":{"fullCartons":2,"openPacks":0,"ppc":12,"color":"WHITE","size":"8 PC SET","po":"T4-001"},"HB-C-TWL-400-SGY-8M":{"fullCartons":6,"openPacks":0,"ppc":12,"color":"STEEL GREY","size":"8 PC SET","po":"T4-001"},"HB-C-TWL-400-MG-8M":{"fullCartons":3,"openPacks":0,"ppc":12,"color":"MOSS GREEN","size":"8 PC SET","po":"T4-001"},"HB-C-TWL-400-ST-8M":{"fullCartons":3,"openPacks":0,"ppc":12,"color":"SOFT TEAL","size":"8 PC SET","po":"T4-001"}},"25":{"GM-TWL-400-W-71":{"fullCartons":38,"openPacks":0,"ppc":8,"color":"WHITE","size":"27x54 in","po":"TWL-400-001"}},"26":{"GM-TWL-400-S-71":{"fullCartons":27,"openPacks":7,"ppc":8,"color":"SAND","size":"27x54 in","po":"TWL-400-001"}},"27":{"GM-TWL-400-A-71":{"fullCartons":34,"openPacks":0,"ppc":8,"color":"ANTHRAZIT","size":"27x54 in","po":"TWL-400-001"}},"28":{"GM-TWL-400-W-51":{"fullCartons":16,"openPacks":0,"ppc":8,"color":"WHITE","size":"20x40 in","po":"TWL-400-001"}},"29":{"GM-TWL-400-S-51":{"fullCartons":8,"openPacks":0,"ppc":8,"color":"SAND","size":"20x40 in","po":"TWL-400-001"},"GM-TWL-400-W-51":{"fullCartons":1,"openPacks":7,"ppc":8,"color":"WHITE","size":"20x40 in","po":"TWL-400-001"},"GM-TWL-400-A-51":{"fullCartons":1,"openPacks":7,"ppc":8,"color":"ANTHRAZIT","size":"20x40 in","po":"TWL-400-001"}},"30":{"GM-TWL-400-A-51":{"fullCartons":16,"openPacks":0,"ppc":8,"color":"ANTHRAZIT","size":"20x40 in","po":"TWL-400-001"}},"31":{"NM-TWL-500-BK-71":{"fullCartons":7,"openPacks":0,"ppc":12,"color":"BLACK","size":"27x54 in","po":"TWL-500-002"},"NM-TWL-500-NB-71":{"fullCartons":12,"openPacks":0,"ppc":12,"color":"NAVY BLUE","size":"27x54 in","po":"TWL-500-002"}},"32":{"NM-TWL-500-A-71":{"fullCartons":4,"openPacks":0,"ppc":12,"color":"ANTHRAZIT","size":"27x54 in","po":"TWL-500-002"},"NM-TWL-500-NB-33":{"fullCartons":7,"openPacks":0,"ppc":30,"color":"NAVY BLUE","size":"12x12 in","po":"TWL-500-002"},"NM-TWL-500-W-71":{"fullCartons":8,"openPacks":0,"ppc":12,"color":"WHITE","size":"27x54 in","po":"TWL-500-002"}},"33":{"HB-L-TWL-500-S-8M":{"fullCartons":3,"openPacks":0,"ppc":8,"color":"SAND","size":"8 PC SET","po":"T5-001"},"HB-L-TWL-500-STN-8M":{"fullCartons":10,"openPacks":0,"ppc":8,"color":"STONE GREY","size":"8 PC SET","po":"T5-001"},"HB-C-TWL-400-ST-8M":{"fullCartons":1,"openPacks":0,"ppc":12,"color":"SOFT TEAL","size":"8 PC SET","po":"T4-001"},"HB-C-TWL-400-DR-61":{"fullCartons":1,"openPacks":0,"ppc":8,"color":"DUNE RED","size":"27x54 in","po":"T4-001"},"HB-L-TWL-500-VW-8M":{"fullCartons":1,"openPacks":0,"ppc":8,"color":"VELVET WINE","size":"8 PC SET","po":"T5-001"},"HB-L-TWL-500-W-8M":{"fullCartons":1,"openPacks":0,"ppc":8,"color":"WHITE","size":"8 PC SET","po":"T5-001"},"HB-L-TWL-500-SG-8M":{"fullCartons":1,"openPacks":0,"ppc":8,"color":"SAGE GREEN","size":"8 PC SET","po":"T5-001"}},"34":{"HB-L-TWL-500-IB-8M":{"fullCartons":4,"openPacks":0,"ppc":8,"color":"ICE BLUE","size":"8 PC SET","po":"T5-001"},"HB-L-TWL-500-STN-8M":{"fullCartons":12,"openPacks":0,"ppc":8,"color":"STONE GREY","size":"8 PC SET","po":"T5-001"},"HB-L-TWL-500-W-8M":{"fullCartons":2,"openPacks":0,"ppc":8,"color":"WHITE","size":"8 PC SET","po":"T5-001"}},"35":{"HB-L-TWL-500-STN-47":{"fullCartons":10,"openPacks":0,"ppc":16,"color":"STONE GREY","size":"16x28 in","po":"T5-001"},"HB-L-TWL-500-W-47":{"fullCartons":1,"openPacks":0,"ppc":16,"color":"WHITE","size":"16x28 in","po":"T5-001"},"HB-L-TWL-500-VW-47":{"fullCartons":1,"openPacks":0,"ppc":16,"color":"VELVET WINE","size":"16x28 in","po":"T5-001"},"HB-L-TWL-500-STN-33":{"fullCartons":1,"openPacks":5,"ppc":12,"color":"STONE GREY","size":"12x12 in","po":"T5-001"},"HB-L-TWL-500-VW-33":{"fullCartons":0,"openPacks":7,"ppc":12,"color":"VELVET WINE","size":"12x12 in","po":"T5-001"},"HB-L-TWL-500-DGY-61":{"fullCartons":9,"openPacks":0,"ppc":12,"color":"DARK GREY","size":"27x54 in","po":"T5-002"},"HB-L-TWL-500-NB-61":{"fullCartons":3,"openPacks":0,"ppc":12,"color":"NAVY BLUE","size":"27x54 in","po":"T5-002"}},"36":{"HB-L-TWL-500-STN-61":{"fullCartons":9,"openPacks":9,"ppc":12,"color":"STONE GREY","size":"27x54 in","po":"T5-001"},"HB-L-TWL-500-W-61":{"fullCartons":0,"openPacks":11,"ppc":12,"color":"WHITE","size":"27x54 in","po":"T5-001"},"HB-L-TWL-500-DGY-61":{"fullCartons":3,"openPacks":0,"ppc":12,"color":"DARK GREY","size":"27x54 in","po":"T5-002"},"HB-L-TWL-500-NB-61":{"fullCartons":6,"openPacks":0,"ppc":12,"color":"NAVY BLUE","size":"27x54 in","po":"T5-002"},"HB-L-TWL-500-SG-61":{"fullCartons":5,"openPacks":0,"ppc":12,"color":"SAGE GREEN","size":"27x54 in","po":"T5-001"}},"37":{"HB-L-TWL-500-SG-33":{"fullCartons":15,"openPacks":0,"ppc":24,"color":"SAGE GREEN","size":"12x12 in","po":"T5-002"}},"38":{"HB-L-TWL-500-VW-33":{"fullCartons":12,"openPacks":0,"ppc":24,"color":"VELVET WINE","size":"12x12 in","po":"T5-002"}},"39":{"HB-L-TWL-500-IB-33":{"fullCartons":12,"openPacks":0,"ppc":24,"color":"ICE BLUE","size":"12x12 in","po":"T5-002"}},"40":{"HB-L-TWL-500-DGY-33":{"fullCartons":15,"openPacks":0,"ppc":24,"color":"DARK GREY","size":"12x12 in","po":"T5-002"}},"41":{"HB-L-TWL-500-DGY-33":{"fullCartons":15,"openPacks":0,"ppc":24,"color":"DARK GREY","size":"12x12 in","po":"T5-002"}},"42":{"HB-L-TWL-500-S-33":{"fullCartons":15,"openPacks":0,"ppc":24,"color":"SAND","size":"12x12 in","po":"T5-002"}},"43":{"HB-L-TWL-500-STN-33":{"fullCartons":7,"openPacks":0,"ppc":24,"color":"STONE GREY","size":"12x12 in","po":"T5-002"},"HB-L-TWL-500-W-33":{"fullCartons":6,"openPacks":0,"ppc":24,"color":"WHITE","size":"12x12 in","po":"T5-002"}},"44":{"HB-L-TWL-500-NB-33":{"fullCartons":15,"openPacks":0,"ppc":24,"color":"NAVY BLUE","size":"12x12 in","po":"T5-002"}},"47":{"HB-L-TWL-500-NB-47":{"fullCartons":14,"openPacks":0,"ppc":16,"color":"NAVY BLUE","size":"16x28 in","po":"T5-002"},"HB-L-TWL-500-STN-47":{"fullCartons":3,"openPacks":0,"ppc":16,"color":"STONE GREY","size":"16x28 in","po":"T5-002"},"HB-L-TWL-500-VW-47":{"fullCartons":1,"openPacks":0,"ppc":16,"color":"VELVET WINE","size":"16x28 in","po":"T5-002"}},"48":{"HB-L-TWL-500-DGY-47":{"fullCartons":7,"openPacks":0,"ppc":16,"color":"DARK GREY","size":"16x28 in","po":"T5-002"},"HB-L-TWL-500-IB-47":{"fullCartons":2,"openPacks":0,"ppc":16,"color":"ICE BLUE","size":"16x28 in","po":"T5-002"},"HB-L-TWL-500-S-47":{"fullCartons":4,"openPacks":0,"ppc":16,"color":"SAND","size":"16x28 in","po":"T5-002"},"HB-L-TWL-500-STN-47":{"fullCartons":1,"openPacks":0,"ppc":16,"color":"STONE GREY","size":"16x28 in","po":"T5-002"},"HB-L-TWL-500-VW-47":{"fullCartons":1,"openPacks":0,"ppc":16,"color":"VELVET WINE","size":"16x28 in","po":"T5-002"}},"51":{"HB-C-TWL-400-SGY-33":{"fullCartons":8,"openPacks":0,"ppc":24,"color":"STEEL GREY","size":"12x12 in","po":"T4-001"},"HB-C-TWL-400-DR-33":{"fullCartons":3,"openPacks":0,"ppc":24,"color":"DUNE RED","size":"12x12 in","po":"T4-001"},"HB-C-TWL-400-W-33":{"fullCartons":2,"openPacks":15,"ppc":24,"color":"WHITE","size":"12x12 in","po":"T4-001"},"HB-C-TWL-400-ST-33":{"fullCartons":1,"openPacks":0,"ppc":24,"color":"SOFT TEAL","size":"12x12 in","po":"T4-001"},"HB-C-TWL-400-MG-33":{"fullCartons":2,"openPacks":23,"ppc":24,"color":"MOSS GREEN","size":"12x12 in","po":"T4-001"}},"52":{"HB-C-TWL-400-DR-46":{"fullCartons":4,"openPacks":0,"ppc":24,"color":"DUNE RED","size":"16x24 in","po":"T4-001"},"HB-C-TWL-400-SGY-46":{"fullCartons":8,"openPacks":0,"ppc":24,"color":"STEEL GREY","size":"16x24 in","po":"T4-001"},"HB-C-TWL-400-MG-46":{"fullCartons":3,"openPacks":0,"ppc":24,"color":"MOSS GREEN","size":"16x24 in","po":"T4-001"},"HB-C-TWL-400-W-46":{"fullCartons":4,"openPacks":0,"ppc":24,"color":"WHITE","size":"16x24 in","po":"T4-001"},"HB-C-TWL-400-ST-46":{"fullCartons":2,"openPacks":0,"ppc":24,"color":"SOFT TEAL","size":"16x24 in","po":"T4-001"}},"53":{"HB-L-TWL-500-DGY-47":{"fullCartons":2,"openPacks":0,"ppc":16,"color":"DARK GREY","size":"16x28 in","po":"T5-002"},"HB-L-TWL-500-IB-47":{"fullCartons":3,"openPacks":0,"ppc":16,"color":"ICE BLUE","size":"16x28 in","po":"T5-002"},"HB-L-TWL-500-S-47":{"fullCartons":1,"openPacks":0,"ppc":16,"color":"SAND","size":"16x28 in","po":"T5-002"},"HB-L-TWL-500-SG-47":{"fullCartons":6,"openPacks":0,"ppc":16,"color":"SAGE GREEN","size":"16x28 in","po":"T5-002"},"HB-L-TWL-500-VW-47":{"fullCartons":3,"openPacks":0,"ppc":16,"color":"VELVET WINE","size":"16x28 in","po":"T5-002"}},"54":{"HB-L-TWL-500-DGY-47":{"fullCartons":2,"openPacks":0,"ppc":16,"color":"DARK GREY","size":"16x28 in","po":"T5-002"},"HB-L-TWL-500-IB-47":{"fullCartons":4,"openPacks":0,"ppc":16,"color":"ICE BLUE","size":"16x28 in","po":"T5-002"},"HB-L-TWL-500-SG-47":{"fullCartons":4,"openPacks":0,"ppc":16,"color":"SAGE GREEN","size":"16x28 in","po":"T5-002"},"HB-L-TWL-500-VW-47":{"fullCartons":5,"openPacks":0,"ppc":16,"color":"VELVET WINE","size":"16x28 in","po":"T5-002"}},"59":{"HB-L-TWL-500-DGY-47":{"fullCartons":2,"openPacks":0,"ppc":16,"color":"DARK GREY","size":"16x28 in","po":"T5-002"},"HB-L-TWL-500-IB-47":{"fullCartons":4,"openPacks":0,"ppc":16,"color":"ICE BLUE","size":"16x28 in","po":"T5-002"},"HB-L-TWL-500-SG-47":{"fullCartons":8,"openPacks":0,"ppc":16,"color":"SAGE GREEN","size":"16x28 in","po":"T5-002"},"HB-L-TWL-500-VW-47":{"fullCartons":1,"openPacks":0,"ppc":16,"color":"VELVET WINE","size":"16x28 in","po":"T5-002"}},"60":{"HB-L-TWL-500-DGY-47":{"fullCartons":6,"openPacks":0,"ppc":16,"color":"DARK GREY","size":"16x28 in","po":"T5-002"},"HB-L-TWL-500-IB-47":{"fullCartons":2,"openPacks":0,"ppc":16,"color":"ICE BLUE","size":"16x28 in","po":"T5-002"},"HB-L-TWL-500-VW-47":{"fullCartons":2,"openPacks":0,"ppc":16,"color":"VELVET WINE","size":"16x28 in","po":"T5-002"},"HB-L-TWL-500-W-47":{"fullCartons":5,"openPacks":0,"ppc":16,"color":"WHITE","size":"16x28 in","po":"T5-002"}},"65":{"HB-L-TWL-500-DGY-8M":{"fullCartons":4,"openPacks":0,"ppc":8,"color":"DARK GREY","size":"8 PC SET","po":"T5-002"},"HB-L-TWL-500-IB-8M":{"fullCartons":2,"openPacks":0,"ppc":8,"color":"ICE BLUE","size":"8 PC SET","po":"T5-002"},"HB-L-TWL-500-NB-8M":{"fullCartons":6,"openPacks":0,"ppc":8,"color":"NAVY BLUE","size":"8 PC SET","po":"T5-002"},"HB-L-TWL-500-S-8M":{"fullCartons":3,"openPacks":0,"ppc":8,"color":"SAND","size":"8 PC SET","po":"T5-002"},"HB-L-TWL-500-SG-8M":{"fullCartons":3,"openPacks":0,"ppc":8,"color":"SAGE GREEN","size":"8 PC SET","po":"T5-002"},"HB-L-TWL-500-W-8M":{"fullCartons":2,"openPacks":0,"ppc":8,"color":"WHITE","size":"8 PC SET","po":"T5-002"}},"66":{"HB-L-TWL-500-DGY-8M":{"fullCartons":8,"openPacks":0,"ppc":8,"color":"DARK GREY","size":"8 PC SET","po":"T5-002"},"HB-L-TWL-500-IB-8M":{"fullCartons":1,"openPacks":0,"ppc":8,"color":"ICE BLUE","size":"8 PC SET","po":"T5-002"},"HB-L-TWL-500-NB-8M":{"fullCartons":4,"openPacks":0,"ppc":8,"color":"NAVY BLUE","size":"8 PC SET","po":"T5-002"},"HB-L-TWL-500-S-8M":{"fullCartons":2,"openPacks":0,"ppc":8,"color":"SAND","size":"8 PC SET","po":"T5-002"},"HB-L-TWL-500-SG-8M":{"fullCartons":5,"openPacks":0,"ppc":8,"color":"SAGE GREEN","size":"8 PC SET","po":"T5-002"}},"71":{"HB-L-TWL-500-DGY-61":{"fullCartons":1,"openPacks":0,"ppc":12,"color":"DARK GREY","size":"27x54 in","po":"T5-002"},"HB-L-TWL-500-DGY-8M":{"fullCartons":7,"openPacks":0,"ppc":8,"color":"DARK GREY","size":"8 PC SET","po":"T5-002"},"HB-L-TWL-500-NB-8M":{"fullCartons":1,"openPacks":0,"ppc":8,"color":"NAVY BLUE","size":"8 PC SET","po":"T5-002"},"HB-L-TWL-500-S-8M":{"fullCartons":1,"openPacks":0,"ppc":8,"color":"SAND","size":"8 PC SET","po":"T5-002"},"HB-L-TWL-500-SG-61":{"fullCartons":1,"openPacks":0,"ppc":12,"color":"SAGE GREEN","size":"27x54 in","po":"T5-002"},"HB-L-TWL-500-SG-8M":{"fullCartons":3,"openPacks":0,"ppc":8,"color":"SAGE GREEN","size":"8 PC SET","po":"T5-002"},"HB-L-TWL-500-STN-61":{"fullCartons":1,"openPacks":0,"ppc":12,"color":"STONE GREY","size":"27x54 in","po":"T5-002"},"HB-L-TWL-500-STN-8M":{"fullCartons":1,"openPacks":0,"ppc":8,"color":"STONE GREY","size":"8 PC SET","po":"T5-002"}},"72":{"HB-L-TWL-500-S-61":{"fullCartons":9,"openPacks":0,"ppc":12,"color":"SAND","size":"27x54 in","po":"T5-002"},"HB-L-TWL-500-W-61":{"fullCartons":9,"openPacks":0,"ppc":12,"color":"WHITE","size":"27x54 in","po":"T5-002"},"HB-L-TWL-500-IB-61":{"fullCartons":2,"openPacks":0,"ppc":12,"color":"ICE BLUE","size":"27x54 in","po":"T5-001"}},"77":{"HB-L-TWL-500-DGY-61":{"fullCartons":5,"openPacks":0,"ppc":12,"color":"DARK GREY","size":"27x54 in","po":"T5-002"},"HB-L-TWL-500-NB-61":{"fullCartons":1,"openPacks":0,"ppc":12,"color":"NAVY BLUE","size":"27x54 in","po":"T5-002"},"HB-L-TWL-500-SG-61":{"fullCartons":2,"openPacks":0,"ppc":12,"color":"SAGE GREEN","size":"27x54 in","po":"T5-002"},"HB-L-TWL-500-VW-61":{"fullCartons":7,"openPacks":0,"ppc":12,"color":"VELVET WINE","size":"27x54 in","po":"T5-002"},"HB-L-TWL-500-IB-61":{"fullCartons":3,"openPacks":0,"ppc":12,"color":"ICE BLUE","size":"27x54 in","po":"T5-001"}},"78":{"HB-L-TWL-500-DGY-61":{"fullCartons":1,"openPacks":0,"ppc":12,"color":"DARK GREY","size":"27x54 in","po":"T5-002"},"HB-L-TWL-500-IB-61":{"fullCartons":7,"openPacks":0,"ppc":12,"color":"ICE BLUE","size":"27x54 in","po":"T5-002"},"HB-L-TWL-500-NB-61":{"fullCartons":2,"openPacks":0,"ppc":12,"color":"NAVY BLUE","size":"27x54 in","po":"T5-002"},"HB-L-TWL-500-S-61":{"fullCartons":3,"openPacks":0,"ppc":12,"color":"SAND","size":"27x54 in","po":"T5-002"},"HB-L-TWL-500-STN-61":{"fullCartons":4,"openPacks":0,"ppc":12,"color":"STONE GREY","size":"27x54 in","po":"T5-002"},"HB-L-TWL-500-VW-61":{"fullCartons":3,"openPacks":0,"ppc":12,"color":"VELVET WINE","size":"27x54 in","po":"T5-002"}}};
 window._PALLET_DATA_ORIG = JSON.parse(JSON.stringify(PALLET_DATA));
 
 // ══════════════════════════════════════════════════════════════════
@@ -1009,12 +1108,21 @@ function buildInventory() {
         };
       }
       var slot = PALLET_DATA[pk][mtx.sku];
-      // ctns = full cartons added; remaining packs (packs - ctns*ppc) go to openPacks
+      var ppc = mtx.ppc || slot.ppc || 1;
       var addCtns = mtx.ctns || 0;
-      var addLoosePacks = (mtx.packs || 0) - addCtns * (mtx.ppc || slot.ppc);
-      if (addLoosePacks < 0) addLoosePacks = 0;
-      slot.fullCartons += addCtns;
-      slot.openPacks += addLoosePacks;
+      var addPacks = mtx.packs || 0;
+      // Split: if ctns is set, that's the sealed ctns. Remaining packs (after ctns*ppc) is loose.
+      // If ctns is 0 but packs is a multiple of ppc, treat the whole thing as full cartons.
+      // Otherwise the remainder of packs/ppc becomes full cartons + loose remainder.
+      var sealedFromPacks = 0;
+      var loosePacks = 0;
+      var packsAfterCtns = addPacks - addCtns * ppc;
+      if (packsAfterCtns < 0) packsAfterCtns = 0;
+      // Split remaining packs into full cartons + loose
+      sealedFromPacks = Math.floor(packsAfterCtns / ppc);
+      loosePacks = packsAfterCtns - sealedFromPacks * ppc;
+      slot.fullCartons += addCtns + sealedFromPacks;
+      slot.openPacks += loosePacks;
     } else if (mtx.type === 'adj-remove' || mtx.type === 'move-out') {
       var pk = String(mtx.pallets || mtx.pallet || '');
       if (!pk || !PALLET_DATA[pk] || !PALLET_DATA[pk][mtx.sku]) continue;
@@ -1051,34 +1159,62 @@ function buildInventory() {
     }
     if (!base) continue;
     var ppc = base.ppc || 1;
-    // TWO-PASS: open packs first across all pallets, then sealed cartons
-    var pKeys = Object.keys(PALLET_DATA).sort(function(a,b){ return Number(a)-Number(b); });
-    for (var k = 0; k < pKeys.length; k++) {
-      if (rem <= 0) break;
-      var slot = PALLET_DATA[pKeys[k]][sku];
-      if (!slot || !slot.openPacks) continue;
-      var take = Math.min(rem, slot.openPacks);
-      slot.openPacks -= take;
-      rem -= take;
-    }
-    for (var k = 0; k < pKeys.length; k++) {
-      if (rem <= 0) break;
-      var slot = PALLET_DATA[pKeys[k]][sku];
-      if (!slot || !slot.fullCartons) continue;
-      var fullCtnsNeeded = Math.floor(rem / ppc);  // full cartons taken completely
-      var remainder = rem % ppc;                   // leftover packs needed
-      // Take full cartons first
-      if (fullCtnsNeeded > 0) {
-        var take = Math.min(slot.fullCartons, fullCtnsNeeded);
-        slot.fullCartons -= take;
-        rem -= take * ppc;
+
+    // Determine target pallets: if tx.pallets is a single pallet number, drain ONLY from there.
+    // Older log entries with comma-separated pallets fall back to legacy spread behavior.
+    var palletStr = String(tx.pallets || '').trim();
+    var isSinglePallet = palletStr && /^\d+$/.test(palletStr);
+
+    if (isSinglePallet) {
+      // NEW BEHAVIOR: drain only from this specific pallet
+      var slot = PALLET_DATA[palletStr] && PALLET_DATA[palletStr][sku];
+      if (!slot) continue;
+      var ctnsLogged = tx.ctns || 0;
+
+      // First take exact full cartons that were logged
+      if (ctnsLogged > 0) {
+        var takeCtns = Math.min(slot.fullCartons, ctnsLogged);
+        slot.fullCartons -= takeCtns;
+        rem -= takeCtns * ppc;
       }
-      // If still need more packs, crack one sealed carton open
+      // Remaining packs come from open cartons on the SAME pallet
+      if (rem > 0 && slot.openPacks > 0) {
+        var takeOpen = Math.min(rem, slot.openPacks);
+        slot.openPacks -= takeOpen;
+        rem -= takeOpen;
+      }
+      // If still need packs and no open carton exists, crack a sealed one
       if (rem > 0 && slot.fullCartons > 0) {
-        slot.fullCartons -= 1;          // remove from sealed
-        slot.openPacks = (slot.openPacks || 0) + (ppc - rem);  // leftover stays as open
+        slot.fullCartons -= 1;
+        slot.openPacks = (slot.openPacks || 0) + (ppc - rem);
         rem = 0;
-        // fullCartons count DOES decrease by 1 here — a carton was physically opened
+      }
+    } else {
+      // LEGACY BEHAVIOR: TWO-PASS spread across all pallets (open packs first, then sealed)
+      var pKeys = Object.keys(PALLET_DATA).sort(function(a,b){ return Number(a)-Number(b); });
+      for (var k = 0; k < pKeys.length; k++) {
+        if (rem <= 0) break;
+        var slot = PALLET_DATA[pKeys[k]][sku];
+        if (!slot || !slot.openPacks) continue;
+        var take = Math.min(rem, slot.openPacks);
+        slot.openPacks -= take;
+        rem -= take;
+      }
+      for (var k = 0; k < pKeys.length; k++) {
+        if (rem <= 0) break;
+        var slot = PALLET_DATA[pKeys[k]][sku];
+        if (!slot || !slot.fullCartons) continue;
+        var fullCtnsNeeded = Math.floor(rem / ppc);
+        if (fullCtnsNeeded > 0) {
+          var take = Math.min(slot.fullCartons, fullCtnsNeeded);
+          slot.fullCartons -= take;
+          rem -= take * ppc;
+        }
+        if (rem > 0 && slot.fullCartons > 0) {
+          slot.fullCartons -= 1;
+          slot.openPacks = (slot.openPacks || 0) + (ppc - rem);
+          rem = 0;
+        }
       }
     }
   }
@@ -1716,70 +1852,116 @@ function confirmPick() {
   if (!currentPlan) { toast('No plan to confirm', 'err'); return; }
 
   const channel = currentPlan.channel;
-  const items = currentPlan.queue.slice();
+  const steps = currentPlan.steps || [];
   let count = 0;
 
-  for (let i = 0; i < items.length; i++) {
-    const item = items[i];
-    const sku = item.sku;
-    const qty = Number(item.qty);
-    if (!sku || !qty) continue;
+  // Helper: extract pallet number and qty from a plan step
+  function parseStep(s) {
+    var palletMatch = s.label.match(/Pallet (\d+)/i);
+    var pallet = palletMatch ? palletMatch[1] : null;
+    if (!pallet) return null;
 
-    const base = BASE_INV.find(function(s){ return s.sku === sku; });
-    if (!base) continue;
+    // Parse SKU from desc: "HB-L-TWL-500-XX-YY · ..." or "HB-L-TWL-500-XX-YY — ..."
+    var skuMatch = s.desc.match(/^([A-Z0-9_-]+)\s*[·—]/);
+    var sku = skuMatch ? skuMatch[1] : null;
+    if (!sku) return null;
 
-    const ppc = Number(base.ppc) || 1;
-    let rem = qty;
-    let ctnsUsed = 0;
+    var base = BASE_INV.find(function(b){ return b.sku === sku; });
+    if (!base) return null;
+    var ppc = base.ppc || 1;
 
-    // Calculate ctnsUsed for log: 2-pass so open packs are always used before cracking sealed
-    var tempRem = rem;
-    var pKeys = Object.keys(PALLET_DATA).sort(function(a,b){ return Number(a)-Number(b); });
-    // Pass 1: open packs first
-    for (var k = 0; k < pKeys.length; k++) {
-      if (tempRem <= 0) break;
-      var slot = PALLET_DATA[pKeys[k]][sku];
-      if (!slot || !slot.openPacks) continue;
-      var take = Math.min(tempRem, slot.openPacks);
-      tempRem -= take;
-    }
-    // Pass 2: sealed cartons only if still needed
-    for (var k = 0; k < pKeys.length; k++) {
-      if (tempRem <= 0) break;
-      var slot = PALLET_DATA[pKeys[k]][sku];
-      if (!slot || !slot.fullCartons) continue;
-      var fullCtnsNeeded = Math.floor(tempRem / ppc);
-      if (fullCtnsNeeded > 0) {
-        var take = Math.min(slot.fullCartons, fullCtnsNeeded);
-        ctnsUsed += take;   // only full carton removals count
-        tempRem -= take * ppc;
+    var isOpenCarton = (s.type === 'open-ctn');
+    var ctns = 0;
+    var packs = 0;
+
+    if (isOpenCarton) {
+      // open-ctn: "... — pick N loose packs from open carton" or "... — N packs from open carton"
+      var packsMatch = s.desc.match(/(\d+)\s+(?:loose\s+)?pack/i);
+      if (packsMatch) packs = parseInt(packsMatch[1]);
+    } else {
+      // sealed: "... — N sealed/full carton(s) ..." OR sample/eBay "N pack(s) from sealed/new carton"
+      var ctnsMatch = s.desc.match(/(\d+)\s+(?:sealed|full)\s+carton/i);
+      if (ctnsMatch) {
+        ctns = parseInt(ctnsMatch[1]);
+        packs = ctns * ppc;
+      } else {
+        // Sample/eBay form: "N packs from sealed carton" — treat N as exact packs (may not be a full carton)
+        var pmatch = s.desc.match(/(\d+)\s+pack/i);
+        if (pmatch) {
+          packs = parseInt(pmatch[1]);
+          // If packs is exactly N×ppc, it's full cartons; otherwise it's a partial
+          if (packs > 0 && packs % ppc === 0) {
+            ctns = packs / ppc;
+          }
+        }
       }
-      // Cracking open a partial carton does NOT count as removing a carton
-      if (tempRem > 0 && slot.fullCartons > 0) {
-        tempRem = 0;  // partial carton opened — carton stays in count
-      }
     }
 
-    // Build log entry
-    const entry = {
+    return {
+      pallet: pallet, sku: sku, ctns: ctns, packs: packs, ppc: ppc,
+      isOpenCarton: isOpenCarton,
+      color: base.color, size: base.size, po: base.po
+    };
+  }
+
+  // Drain each plan step from its specific pallet
+  // Group steps by SKU so we log one entry per SKU per pallet
+  var entriesBySkuPallet = {};
+
+  for (var i = 0; i < steps.length; i++) {
+    var step = steps[i];
+    if (step.type === 'warn') continue;
+
+    var parsed = parseStep(step);
+    if (!parsed) continue;
+
+    var key = parsed.sku + '|' + parsed.pallet;
+    if (!entriesBySkuPallet[key]) {
+      entriesBySkuPallet[key] = {
+        sku: parsed.sku, pallet: parsed.pallet, ppc: parsed.ppc,
+        color: parsed.color, size: parsed.size, po: parsed.po,
+        sealedCtns: 0, openPacks: 0
+      };
+    }
+    if (parsed.isOpenCarton) {
+      entriesBySkuPallet[key].openPacks += parsed.packs;
+    } else {
+      // Sealed step: ctns may be 0 if it was a partial-pack draw from sealed (eBay form)
+      entriesBySkuPallet[key].sealedCtns += parsed.ctns;
+      // If packs > ctns*ppc, it's a partial sealed pull (e.g., 30 packs from sealed when ppc=24)
+      var leftoverPacks = parsed.packs - parsed.ctns * parsed.ppc;
+      if (leftoverPacks > 0) entriesBySkuPallet[key].openPacks += leftoverPacks;
+    }
+  }
+
+  // Build pick log entries — one per (SKU, pallet) combo
+  var newEntries = [];
+  Object.values(entriesBySkuPallet).forEach(function(e){
+    var totalPacks = e.sealedCtns * e.ppc + e.openPacks;
+    if (totalPacks === 0) return;
+    newEntries.push({
       time:    new Date().toISOString(),
       type:    'out',
-      sku:     sku,
-      color:   base.color,
-      size:    base.size,
+      sku:     e.sku,
+      color:   e.color,
+      size:    e.size,
       channel: channel,
-      packs:   qty,
-      ctns:    ctnsUsed,
-      pallets: getPalletsForSKU(sku),
-      note:    'Pick: ' + channel,
-      _localKey: sku + '_' + Date.now() // temp local key before Supabase ID arrives
-    };
+      packs:   totalPacks,
+      ctns:    e.sealedCtns,  // ONLY sealed cartons count
+      pallets: e.pallet,       // ONE specific pallet
+      ppc:     e.ppc,
+      po:      e.po,
+      note:    'Pick: ' + channel + ' · P' + e.pallet,
+      _localKey: e.sku + '_' + e.pallet + '_' + Date.now()
+    });
+    count++;
+  });
 
-    // Add to FRONT of both logs
+  // Add to FRONT of both logs
+  newEntries.forEach(function(entry){
     txLog.unshift(entry);
     livePickLog.unshift(entry);
-    count++;
-  }
+  });
 
   // Reset pick UI
   pickQueue = [];
@@ -3071,6 +3253,8 @@ function mgrSwitchTab(tab) {
     bulkRender();
     setTimeout(function(){ document.getElementById('bulk-scan-input').focus(); }, 50);
   }
+  if (tab === 'fix') fixShowPreview();
+  if (tab === 'editor') edRender();
 }
 
 function mgrPopulateAllDropdowns() {
@@ -3131,11 +3315,19 @@ function mgrUpdateRcvInfo() {
   var ppc = parseInt(document.getElementById('rcv-ppc').value) || 0;
   var info = document.getElementById('rcv-info');
   if (!qty || !ppc) { info.style.display = 'none'; return; }
-  var totalPacks = mode === 'cartons' ? qty * ppc : qty;
-  var totalCtns  = mode === 'cartons' ? qty : 0;
+  var totalPacks, totalCtns, loose;
+  if (mode === 'cartons') {
+    totalPacks = qty * ppc;
+    totalCtns = qty;
+    loose = 0;
+  } else {
+    totalPacks = qty;
+    totalCtns = Math.floor(qty / ppc);
+    loose = qty - totalCtns * ppc;
+  }
   info.style.display = 'block';
-  info.innerHTML = '<b>Will add:</b> ' + totalCtns + ' full cartons + ' +
-    (mode === 'cartons' ? '0' : qty) + ' loose packs = <b>' + totalPacks + ' packs total</b>';
+  info.innerHTML = '<b>Will add:</b> ' + totalCtns + ' full carton' + (totalCtns!==1?'s':'') + ' + ' +
+    loose + ' loose pack' + (loose!==1?'s':'') + ' = <b>' + totalPacks + ' packs total</b>';
 }
 
 function mgrClearReceive() {
@@ -3164,8 +3356,14 @@ function mgrReceive() {
   var base = BASE_INV.find(function(s){ return s.sku === sku; });
   if (!base) { toast('SKU not found in catalog', 'err'); return; }
 
-  var totalPacks = mode === 'cartons' ? qty * ppc : qty;
-  var totalCtns  = mode === 'cartons' ? qty : 0;
+  var totalPacks, totalCtns;
+  if (mode === 'cartons') {
+    totalPacks = qty * ppc;
+    totalCtns = qty;
+  } else {
+    totalPacks = qty;
+    totalCtns = Math.floor(qty / ppc);
+  }
 
   var entry = {
     time: new Date().toISOString(),
@@ -3768,6 +3966,534 @@ function bulkImportContainer() {
   document.getElementById('bulk-tsv').value = '';
   bulkContainerParsed = null;
   bulkRenderContainer();
+}
+
+// ─── PALLET EDITOR ───
+
+// Track in-flight saves so we don't fire multiple for the same field
+var edSaveTimers = {};
+
+function edRender() {
+  var search = (document.getElementById('ed-search').value || '').trim().toLowerCase();
+  var grid = document.getElementById('ed-grid');
+  var palletKeys = Object.keys(PALLET_DATA).sort(function(a,b){ return Number(a)-Number(b); });
+
+  // Filter
+  var filtered = palletKeys.filter(function(p){
+    if (!search) return true;
+    if (('p' + p).includes(search) || p.includes(search)) return true;
+    var pSkus = Object.keys(PALLET_DATA[p]);
+    return pSkus.some(function(s){ return s.toLowerCase().includes(search); });
+  });
+
+  document.getElementById('ed-status').textContent = filtered.length + ' / ' + palletKeys.length + ' pallets';
+
+  if (filtered.length === 0) {
+    grid.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">No pallets match your search.</div>';
+    return;
+  }
+
+  grid.innerHTML = filtered.map(function(p){ return edRenderCard(p); }).join('');
+}
+
+function edRenderCard(pallet) {
+  var skus = PALLET_DATA[pallet] || {};
+  var skuKeys = Object.keys(skus).sort();
+
+  var totalCtns = skuKeys.reduce(function(sum, sku){ return sum + (skus[sku].fullCartons || 0); }, 0);
+  var totalLoose = skuKeys.reduce(function(sum, sku){ return sum + (skus[sku].openPacks || 0); }, 0);
+  var totalPacks = skuKeys.reduce(function(sum, sku){ return sum + (skus[sku].fullCartons * skus[sku].ppc + skus[sku].openPacks); }, 0);
+
+  var hasLoose = totalLoose > 0;
+
+  var rows = skuKeys.map(function(sku){
+    var slot = skus[sku];
+    var safeId = pallet + '_' + sku.replace(/[^A-Z0-9]/gi,'_');
+    return '<div class="ed-row" data-pallet="' + pallet + '" data-sku="' + sku + '">' +
+      '<div class="ed-label">' +
+        '<div class="sku-name">' + sku + '</div>' +
+        '<div class="sku-meta">' + (slot.color||'') + ' · ' + (slot.size||'') + ' · ppc ' + slot.ppc + '</div>' +
+      '</div>' +
+      '<input type="number" min="0" id="ed-c-' + safeId + '" value="' + slot.fullCartons + '" oninput="edEdit(\'' + pallet + '\', \'' + sku + '\', \'fullCartons\', this.value)" title="Full cartons">' +
+      '<input type="number" min="0" id="ed-p-' + safeId + '" value="' + slot.openPacks + '" oninput="edEdit(\'' + pallet + '\', \'' + sku + '\', \'openPacks\', this.value)" title="Loose packs">' +
+      '<div style="font-size:11px;color:var(--muted);text-align:center" id="ed-status-' + safeId + '">' + (slot.fullCartons * slot.ppc + slot.openPacks) + 'p</div>' +
+      '<button class="btn btn-gray btn-sm" onclick="edRemoveSku(\'' + pallet + '\', \'' + sku + '\')">Remove</button>' +
+    '</div>';
+  }).join('');
+
+  // Add SKU row
+  var addRow = '<div class="ed-add-row">' +
+    '<select id="ed-add-sku-' + pallet + '">' +
+      '<option value="">+ Add SKU...</option>' +
+      BASE_INV.map(function(b){ return '<option value="' + b.sku + '">' + b.sku + ' (' + b.color + ')</option>'; }).join('') +
+    '</select>' +
+    '<input type="number" min="0" id="ed-add-c-' + pallet + '" placeholder="Ctns" value="0">' +
+    '<input type="number" min="0" id="ed-add-p-' + pallet + '" placeholder="Pks" value="0">' +
+    '<div></div>' +
+    '<button class="btn btn-blue btn-sm" onclick="edAddSku(\'' + pallet + '\')">Add</button>' +
+  '</div>';
+
+  return '<div class="ed-card">' +
+    '<div class="ed-card-hdr">' +
+      '<h4>📦 Pallet ' + pallet + ' &nbsp;<span style="font-weight:400;font-size:12px;opacity:.85">· ' + totalCtns + ' ctn' + (hasLoose ? ' + ' + totalLoose + ' loose' : '') + ' = ' + totalPacks + ' packs</span></h4>' +
+      '<div class="ed-card-actions">' +
+        (hasLoose ? '<button class="btn btn-orange btn-sm" onclick="edConvertLoose(\'' + pallet + '\')">⬆️ Convert Loose→Ctns</button>' : '') +
+        '<button class="btn btn-red btn-sm" onclick="edDeletePallet(\'' + pallet + '\')">🗑 Delete Pallet</button>' +
+      '</div>' +
+    '</div>' +
+    (rows || '<div style="padding:14px;color:var(--muted);font-size:12px;text-align:center">No SKUs on this pallet.</div>') +
+    addRow +
+  '</div>';
+}
+
+// Edit a field — debounced autosave
+function edEdit(pallet, sku, field, valStr) {
+  if (!mgrIsUnlocked()) { toast('Locked', 'err'); edRender(); return; }
+  var val = parseInt(valStr) || 0;
+  if (val < 0) val = 0;
+
+  var key = pallet + '|' + sku + '|' + field;
+  if (edSaveTimers[key]) clearTimeout(edSaveTimers[key]);
+
+  edSaveTimers[key] = setTimeout(function(){
+    edApplyEdit(pallet, sku, field, val);
+  }, 400);
+
+  // Show "saving..." indicator
+  var safeId = pallet + '_' + sku.replace(/[^A-Z0-9]/gi,'_');
+  var statusEl = document.getElementById('ed-status-' + safeId);
+  if (statusEl) statusEl.textContent = '...';
+}
+
+async function edApplyEdit(pallet, sku, field, newVal) {
+  var slot = PALLET_DATA[pallet] && PALLET_DATA[pallet][sku];
+  if (!slot) return;
+
+  var oldVal = slot[field] || 0;
+  var diff = newVal - oldVal;
+  if (diff === 0) {
+    // no change, just update display
+    var safeId = pallet + '_' + sku.replace(/[^A-Z0-9]/gi,'_');
+    var statusEl = document.getElementById('ed-status-' + safeId);
+    if (statusEl) statusEl.textContent = (slot.fullCartons * slot.ppc + slot.openPacks) + 'p';
+    return;
+  }
+
+  // Compute packs delta for log
+  var ppc = slot.ppc || 1;
+  var packsDelta;
+  var ctnsDelta;
+  if (field === 'fullCartons') {
+    packsDelta = diff * ppc;
+    ctnsDelta = diff;
+  } else { // openPacks
+    packsDelta = diff;
+    ctnsDelta = 0;
+  }
+
+  var entry = {
+    time: new Date().toISOString(),
+    type: diff > 0 ? 'adj-add' : 'adj-remove',
+    sku: sku,
+    color: slot.color || '',
+    size: slot.size || '',
+    channel: 'Adjust',
+    packs: Math.abs(packsDelta),
+    ctns: Math.abs(ctnsDelta),
+    pallets: String(pallet),
+    ppc: ppc,
+    po: slot.po || '',
+    note: 'Editor: ' + (diff > 0 ? '+' : '') + diff + ' ' + (field === 'fullCartons' ? 'ctns' : 'loose pks')
+  };
+
+  // Apply locally first
+  slot[field] = newVal;
+
+  // Add to log
+  txLog.unshift(entry);
+  livePickLog.unshift(entry);
+  try { localStorage.setItem('usc_livePickLog', JSON.stringify(livePickLog)); } catch(e) {}
+
+  // Persist to Supabase
+  try {
+    var result = await sb.from('picks').insert([{
+      sku: entry.sku, color: entry.color, size: entry.size,
+      channel: entry.channel, packs: entry.packs, ctns: entry.ctns,
+      pallets: entry.pallets, note: entry.note, type: entry.type
+    }]).select();
+    if (result.data && result.data[0]) {
+      seenIds.add(result.data[0].id);
+      entry.id = result.data[0].id;
+      try { localStorage.setItem('usc_livePickLog', JSON.stringify(livePickLog)); } catch(e) {}
+    }
+  } catch(e) {
+    console.warn('Supabase insert failed:', e);
+  }
+
+  // Rebuild and re-render
+  buildInventory();
+  if (typeof renderAll === 'function') renderAll();
+
+  // Update display indicator
+  var safeId = pallet + '_' + sku.replace(/[^A-Z0-9]/gi,'_');
+  var statusEl = document.getElementById('ed-status-' + safeId);
+  var rebuiltSlot = PALLET_DATA[pallet] && PALLET_DATA[pallet][sku];
+  if (statusEl && rebuiltSlot) {
+    statusEl.textContent = '✓ ' + (rebuiltSlot.fullCartons * rebuiltSlot.ppc + rebuiltSlot.openPacks) + 'p';
+  }
+}
+
+async function edAddSku(pallet) {
+  if (!mgrIsUnlocked()) { toast('Locked', 'err'); return; }
+  var sku = document.getElementById('ed-add-sku-' + pallet).value;
+  var ctns = parseInt(document.getElementById('ed-add-c-' + pallet).value) || 0;
+  var packs = parseInt(document.getElementById('ed-add-p-' + pallet).value) || 0;
+
+  if (!sku) { toast('Pick a SKU', 'err'); return; }
+  if (ctns === 0 && packs === 0) { toast('Enter cartons or packs', 'err'); return; }
+
+  var base = BASE_INV.find(function(b){ return b.sku === sku; });
+  if (!base) { toast('SKU not in catalog', 'err'); return; }
+
+  if (PALLET_DATA[pallet] && PALLET_DATA[pallet][sku]) {
+    if (!confirm(sku + ' already on P' + pallet + '. Add to existing?')) return;
+  }
+
+  if (!PALLET_DATA[pallet]) PALLET_DATA[pallet] = {};
+  if (!PALLET_DATA[pallet][sku]) {
+    PALLET_DATA[pallet][sku] = {
+      fullCartons: 0, openPacks: 0, ppc: base.ppc,
+      color: base.color, size: base.size, po: base.po
+    };
+  }
+  var slot = PALLET_DATA[pallet][sku];
+  slot.fullCartons += ctns;
+  slot.openPacks += packs;
+
+  // Log entry
+  var totalPacks = ctns * base.ppc + packs;
+  var entry = {
+    time: new Date().toISOString(),
+    type: 'adj-add',
+    sku: sku, color: base.color, size: base.size,
+    channel: 'Adjust',
+    packs: totalPacks, ctns: ctns,
+    pallets: String(pallet),
+    ppc: base.ppc, po: base.po,
+    note: 'Editor: added ' + sku + ' to P' + pallet + ' (' + ctns + 'c + ' + packs + 'p)'
+  };
+  txLog.unshift(entry);
+  livePickLog.unshift(entry);
+  try { localStorage.setItem('usc_livePickLog', JSON.stringify(livePickLog)); } catch(e) {}
+
+  try {
+    var result = await sb.from('picks').insert([{
+      sku: entry.sku, color: entry.color, size: entry.size,
+      channel: entry.channel, packs: entry.packs, ctns: entry.ctns,
+      pallets: entry.pallets, note: entry.note, type: entry.type
+    }]).select();
+    if (result.data && result.data[0]) {
+      seenIds.add(result.data[0].id);
+      entry.id = result.data[0].id;
+      try { localStorage.setItem('usc_livePickLog', JSON.stringify(livePickLog)); } catch(e) {}
+    }
+  } catch(e) { console.warn('SB error:', e); }
+
+  toast('✓ Added ' + sku + ' to P' + pallet, 'ok');
+  buildInventory();
+  edRender();
+  if (typeof renderAll === 'function') renderAll();
+}
+
+async function edRemoveSku(pallet, sku) {
+  if (!mgrIsUnlocked()) { toast('Locked', 'err'); return; }
+  var slot = PALLET_DATA[pallet] && PALLET_DATA[pallet][sku];
+  if (!slot) return;
+
+  if (!confirm('Remove ' + sku + ' from P' + pallet + '? (' + slot.fullCartons + 'c + ' + slot.openPacks + 'p will be deducted)')) return;
+
+  var ppc = slot.ppc;
+  var totalPacks = slot.fullCartons * ppc + slot.openPacks;
+  var ctns = slot.fullCartons;
+  var color = slot.color, size = slot.size, po = slot.po;
+
+  delete PALLET_DATA[pallet][sku];
+
+  if (totalPacks > 0) {
+    var entry = {
+      time: new Date().toISOString(),
+      type: 'adj-remove',
+      sku: sku, color: color, size: size,
+      channel: 'Adjust',
+      packs: totalPacks, ctns: ctns,
+      pallets: String(pallet),
+      ppc: ppc, po: po,
+      note: 'Editor: removed ' + sku + ' from P' + pallet
+    };
+    txLog.unshift(entry);
+    livePickLog.unshift(entry);
+    try { localStorage.setItem('usc_livePickLog', JSON.stringify(livePickLog)); } catch(e) {}
+    try {
+      await sb.from('picks').insert([{
+        sku: entry.sku, color: entry.color, size: entry.size,
+        channel: entry.channel, packs: entry.packs, ctns: entry.ctns,
+        pallets: entry.pallets, note: entry.note, type: entry.type
+      }]);
+    } catch(e) { console.warn('SB error:', e); }
+  }
+
+  toast('✓ Removed ' + sku + ' from P' + pallet, 'ok');
+  buildInventory();
+  edRender();
+  if (typeof renderAll === 'function') renderAll();
+}
+
+async function edDeletePallet(pallet) {
+  if (!mgrIsUnlocked()) { toast('Locked', 'err'); return; }
+  var skus = PALLET_DATA[pallet] || {};
+  var n = Object.keys(skus).length;
+  if (!confirm('DELETE Pallet ' + pallet + ' entirely?' + (n > 0 ? '\n\nThis will remove ' + n + ' SKU slot(s) and all their stock.' : ''))) return;
+
+  // Log a remove for each SKU
+  for (var sku in skus) {
+    var slot = skus[sku];
+    var totalPacks = slot.fullCartons * slot.ppc + slot.openPacks;
+    if (totalPacks <= 0) continue;
+    var entry = {
+      time: new Date().toISOString(),
+      type: 'adj-remove',
+      sku: sku, color: slot.color || '', size: slot.size || '',
+      channel: 'Adjust',
+      packs: totalPacks, ctns: slot.fullCartons,
+      pallets: String(pallet),
+      ppc: slot.ppc, po: slot.po || '',
+      note: 'Editor: deleted P' + pallet
+    };
+    txLog.unshift(entry);
+    livePickLog.unshift(entry);
+    try {
+      await sb.from('picks').insert([{
+        sku: entry.sku, color: entry.color, size: entry.size,
+        channel: entry.channel, packs: entry.packs, ctns: entry.ctns,
+        pallets: entry.pallets, note: entry.note, type: entry.type
+      }]);
+    } catch(e) { console.warn('SB error:', e); }
+  }
+  delete PALLET_DATA[pallet];
+  try { localStorage.setItem('usc_livePickLog', JSON.stringify(livePickLog)); } catch(e) {}
+
+  toast('✓ Deleted P' + pallet, 'ok');
+  buildInventory();
+  edRender();
+  if (typeof renderAll === 'function') renderAll();
+}
+
+async function edNewPallet() {
+  if (!mgrIsUnlocked()) { toast('Locked', 'err'); return; }
+  var palletKeys = Object.keys(PALLET_DATA).map(Number).sort(function(a,b){return a-b;});
+  var suggested = (palletKeys[palletKeys.length-1] || 0) + 1;
+  var input = prompt('New pallet number:', suggested);
+  if (!input) return;
+  var n = parseInt(input);
+  if (isNaN(n) || n < 1) { toast('Bad pallet number', 'err'); return; }
+  if (PALLET_DATA[String(n)]) { toast('P' + n + ' already exists', 'err'); return; }
+
+  PALLET_DATA[String(n)] = {};
+
+  var entry = {
+    time: new Date().toISOString(),
+    type: 'new-pallet',
+    sku: '', color: '', size: '',
+    channel: 'New-Pallet',
+    packs: 0, ctns: 0,
+    pallets: String(n),
+    note: 'Editor: created P' + n
+  };
+  txLog.unshift(entry);
+  livePickLog.unshift(entry);
+  try { localStorage.setItem('usc_livePickLog', JSON.stringify(livePickLog)); } catch(e) {}
+  try {
+    await sb.from('picks').insert([{
+      sku: '', color: '', size: '',
+      channel: entry.channel, packs: 0, ctns: 0,
+      pallets: entry.pallets, note: entry.note, type: entry.type
+    }]);
+  } catch(e) { console.warn('SB error:', e); }
+
+  toast('✓ Created P' + n, 'ok');
+  buildInventory();
+  edRender();
+}
+
+async function edConvertLoose(pallet) {
+  if (!mgrIsUnlocked()) { toast('Locked', 'err'); return; }
+  var skus = PALLET_DATA[pallet] || {};
+  var changes = []; // [{sku, addCtns}]
+  for (var sku in skus) {
+    var slot = skus[sku];
+    if (slot.openPacks <= 0) continue;
+    // Round UP: any loose count becomes a full carton
+    changes.push({ sku: sku, fromLoose: slot.openPacks, toCtns: 1, slot: slot });
+  }
+  if (changes.length === 0) { toast('No loose packs to convert', 'err'); return; }
+
+  var msg = 'Convert ' + changes.length + ' loose-pack entries on P' + pallet + ' to full sealed cartons?\n\n' +
+    changes.map(function(c){ return '  ' + c.sku + ': ' + c.fromLoose + 'p → 1 ctn (was ' + c.slot.fullCartons + 'c, becomes ' + (c.slot.fullCartons + 1) + 'c)'; }).join('\n');
+  if (!confirm(msg)) return;
+
+  // Apply: convert each loose pack pile into +1 full carton
+  for (var i = 0; i < changes.length; i++) {
+    var c = changes[i];
+    var slot = c.slot;
+    var ppc = slot.ppc;
+    var packsDelta = ppc - c.fromLoose; // net packs added (a full carton replaces partial loose)
+    slot.fullCartons += 1;
+    slot.openPacks = 0;
+
+    // Log as adj-add for the net packs delta
+    if (packsDelta !== 0) {
+      var entry = {
+        time: new Date().toISOString(),
+        type: packsDelta > 0 ? 'adj-add' : 'adj-remove',
+        sku: c.sku, color: slot.color || '', size: slot.size || '',
+        channel: 'Adjust',
+        packs: Math.abs(packsDelta), ctns: 0,
+        pallets: String(pallet),
+        ppc: ppc, po: slot.po || '',
+        note: 'Editor: convert ' + c.fromLoose + ' loose pks to 1 ctn (' + ppc + 'p)'
+      };
+      txLog.unshift(entry);
+      livePickLog.unshift(entry);
+      try {
+        await sb.from('picks').insert([{
+          sku: entry.sku, color: entry.color, size: entry.size,
+          channel: entry.channel, packs: entry.packs, ctns: entry.ctns,
+          pallets: entry.pallets, note: entry.note, type: entry.type
+        }]);
+      } catch(e) { console.warn('SB error:', e); }
+    }
+  }
+  try { localStorage.setItem('usc_livePickLog', JSON.stringify(livePickLog)); } catch(e) {}
+
+  toast('✓ Converted ' + changes.length + ' loose entries on P' + pallet, 'ok');
+  buildInventory();
+  edRender();
+  if (typeof renderAll === 'function') renderAll();
+}
+
+// ─── WIPE RECENT PICKS (filter-based) ───
+
+function fixGetMatchingEntries() {
+  var channel = document.getElementById('fix-channel').value;
+  var days = parseInt(document.getElementById('fix-days').value) || 3;
+  var typeFilter = document.getElementById('fix-type').value;
+
+  var cutoff = new Date();
+  cutoff.setHours(0, 0, 0, 0);
+  cutoff.setDate(cutoff.getDate() - (days - 1));
+  var cutoffISO = cutoff.toISOString();
+
+  return livePickLog.filter(function(e){
+    if (!e.time || e.time < cutoffISO) return false;
+    if (typeFilter === 'out' && e.type !== 'out') return false;
+    if (channel && e.channel !== channel) return false;
+    return true;
+  });
+}
+
+function fixShowPreview() {
+  var matches = fixGetMatchingEntries();
+  document.getElementById('fix-bad-count').textContent = matches.length + ' entries';
+
+  // Summary
+  var totalPacks = matches.reduce(function(s,e){ return s + (e.packs||0); }, 0);
+  var totalCtns = matches.reduce(function(s,e){ return s + (e.ctns||0); }, 0);
+  var byChannel = {};
+  matches.forEach(function(e){
+    var ch = e.channel || 'unknown';
+    if (!byChannel[ch]) byChannel[ch] = 0;
+    byChannel[ch]++;
+  });
+  var chBreakdown = Object.keys(byChannel).map(function(ch){ return byChannel[ch]+' '+ch; }).join(', ');
+  document.getElementById('fix-bad-summary').innerHTML = matches.length === 0
+    ? ''
+    : '<b>'+matches.length+'</b> entries · <b>'+totalPacks+'</b> total packs · <b>'+totalCtns+'</b> total cartons' +
+      (chBreakdown ? ' &nbsp; · &nbsp; '+chBreakdown : '');
+
+  // Table
+  var rows = matches.map(function(e){
+    var d = new Date(e.time);
+    var ts = d.toLocaleString('en-US', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
+    var typeChip = e.type === 'out' ? '<span class="chip chip-blue">pick</span>' :
+                   e.type === 'recv' ? '<span class="chip chip-green">recv</span>' :
+                   '<span class="chip chip-orange">'+(e.type||'?')+'</span>';
+    return '<tr>' +
+      '<td style="font-size:11px;color:var(--muted);white-space:nowrap">'+ts+'</td>' +
+      '<td>'+typeChip+'</td>' +
+      '<td><div class="sku-name">'+(e.sku||'')+'</div><div class="sku-meta">'+(e.color||'')+(e.size?' · '+e.size:'')+'</div></td>' +
+      '<td style="font-size:12px"><b>P'+(e.pallets||'?')+'</b></td>' +
+      '<td style="text-align:right"><b>'+(e.packs||0)+'</b><div style="font-size:11px;color:var(--muted)">'+(e.ctns||0)+' ctn</div></td>' +
+      '<td style="font-size:11px;color:var(--muted)">'+(e.channel||'')+'</td>' +
+      '</tr>';
+  }).join('');
+
+  document.getElementById('fix-bad-table').innerHTML = matches.length === 0
+    ? '<div style="text-align:center;padding:30px;color:var(--muted)">No matching entries found with current filters</div>'
+    : '<table><thead><tr><th>Time</th><th>Type</th><th>SKU</th><th>Pallet</th><th style="text-align:right">Qty</th><th>Channel</th></tr></thead><tbody>'+rows+'</tbody></table>';
+}
+
+async function fixApply() {
+  if (!mgrIsUnlocked()) { toast('Locked', 'err'); return; }
+
+  var matches = fixGetMatchingEntries();
+  if (matches.length === 0) { toast('Nothing to delete with current filters', 'err'); return; }
+
+  var channel = document.getElementById('fix-channel').value || 'All channels';
+  var days = parseInt(document.getElementById('fix-days').value) || 3;
+
+  var msg = 'DELETE ' + matches.length + ' entries?\n\n' +
+    'Channel: ' + channel + '\n' +
+    'Period: last ' + days + ' day(s)\n\n' +
+    'This removes them from your local log and from Supabase. Inventory will rebuild from baseline.\n\n' +
+    'Continue?';
+  if (!confirm(msg)) return;
+
+  // Step 1: delete from Supabase (those with IDs)
+  var idsToDelete = matches.filter(function(e){ return e.id; }).map(function(e){ return e.id; });
+  if (idsToDelete.length > 0) {
+    try {
+      // Supabase has a default URL length limit; chunk into groups of 100
+      var chunkSize = 100;
+      for (var i = 0; i < idsToDelete.length; i += chunkSize) {
+        var chunk = idsToDelete.slice(i, i + chunkSize);
+        await sb.from('picks').delete().in('id', chunk);
+      }
+    } catch(e) {
+      console.warn('Supabase delete error:', e);
+      toast('⚠ Supabase delete had issues, check console. Continuing locally.', 'err');
+    }
+  }
+
+  // Step 2: remove from local arrays
+  var matchSet = new Set(matches.map(function(e){ return e.id || (e.time + '|' + e.sku + '|' + e.packs + '|' + e.pallets); }));
+  function keep(e) {
+    var key = e.id || (e.time + '|' + e.sku + '|' + e.packs + '|' + e.pallets);
+    return !matchSet.has(key);
+  }
+  livePickLog = livePickLog.filter(keep);
+  txLog = txLog.filter(keep);
+  matches.forEach(function(e){ if (e.id) seenIds.delete(e.id); });
+
+  // Persist
+  try { localStorage.setItem('usc_livePickLog', JSON.stringify(livePickLog)); } catch(e) {}
+
+  // Rebuild
+  buildInventory();
+  if (typeof renderAll === 'function') renderAll();
+  mgrPopulateAllDropdowns();
+  fixShowPreview();
+
+  toast('✓ Deleted ' + matches.length + ' entries — inventory rebuilt', 'ok');
 }
 
 // ─── ACTIVITY ───
