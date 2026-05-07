@@ -996,52 +996,6 @@ async function init() {
       };
     });
 
-    // ─── ONE-TIME PARTIAL WIPE: drop log entries for pallets 35+ ───
-    // ─── ONE-TIME FULL WIPE: nuke entire log to stop ghost pallets ───
-    // Backup file is the source of truth. After wipe, WMS shows exactly
-    // what's in PALLET_DATA baseline. Future picks/edits start fresh.
-    if (!localStorage.getItem('usc_full_wipe_2026_05_07')) {
-      var totalToWipe = livePickLog.length;
-      console.log('FULL WIPE: clearing all ' + totalToWipe + ' log entries from Supabase + local');
-
-      // Delete from Supabase
-      var allIds = livePickLog.filter(function(e){ return e.id; }).map(function(e){ return e.id; });
-      if (allIds.length > 0) {
-        try {
-          for (var ci = 0; ci < allIds.length; ci += 100) {
-            var chunk = allIds.slice(ci, ci + 100);
-            await sb.from('picks').delete().in('id', chunk);
-          }
-        } catch(e) {
-          console.error('Supabase wipe error:', e);
-          // Fallback: delete by date filter (catches any entries we couldn't see)
-          try {
-            await sb.from('picks').delete().gte('created_at', '2000-01-01');
-          } catch(e2) { console.error('Fallback wipe failed:', e2); }
-        }
-      } else {
-        // No IDs — try the fallback delete-everything approach
-        try {
-          await sb.from('picks').delete().gte('created_at', '2000-01-01');
-        } catch(e) { console.warn('Bulk delete failed:', e); }
-      }
-
-      // Wipe local arrays completely
-      livePickLog = [];
-      txLog = [];
-      seenIds = new Set();
-      deletedEntries = [];
-      try { localStorage.removeItem('usc_livePickLog'); } catch(e) {}
-      try { localStorage.removeItem('usc_deletedEntries'); } catch(e) {}
-
-      // Set flag so this never runs again
-      localStorage.setItem('usc_full_wipe_2026_05_07', '1');
-
-      setTimeout(function(){
-        toast('🧹 Wiped ' + totalToWipe + ' log entries. Clean slate — WMS = baseline only.', 'ok');
-      }, 1500);
-    }
-
     // Merge into txLog
     livePickLog.forEach(function(entry) {
       var exists = txLog.some(function(t) { return t.time === entry.time && t.sku === entry.sku; });
@@ -1135,11 +1089,18 @@ function buildInventory() {
   // Step 1: Reset PALLET_DATA to hardcoded baseline (always clean start)
   PALLET_DATA = JSON.parse(JSON.stringify(window._PALLET_DATA_ORIG));
 
+  // SNAPSHOT_DATE: log entries BEFORE this date are kept for reports
+  // but NOT replayed onto pallet counts (they're history, not active stock changes).
+  // The baseline already reflects the warehouse state as of this date.
+  var SNAPSHOT_DATE = '2026-05-07T00:00:00.000Z';
+
   // Step 1.5: Replay manager events (receive/move/adjust/new-pallet) FIRST,
   // in chronological order (oldest first), so picks see the updated stock
   var mgrEvents = livePickLog.slice().reverse();
   for (var mi = 0; mi < mgrEvents.length; mi++) {
     var mtx = mgrEvents[mi];
+    // Skip pre-snapshot entries (already reflected in baseline)
+    if (mtx.time && mtx.time < SNAPSHOT_DATE) continue;
     if (mtx.type === 'new-pallet') {
       var pk = String(mtx.pallets || mtx.pallet || '');
       if (pk && !PALLET_DATA[pk]) PALLET_DATA[pk] = {};
@@ -1197,6 +1158,8 @@ function buildInventory() {
   for (var i = 0; i < livePickLog.length; i++) {
     var tx = livePickLog[i];
     if (tx.type !== 'out') continue;
+    // Skip pre-snapshot picks (history only — already reflected in baseline)
+    if (tx.time && tx.time < SNAPSHOT_DATE) continue;
     var sku = tx.sku;
     var rem = tx.packs;
     var base = null;
