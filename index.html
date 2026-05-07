@@ -541,6 +541,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       <button class="mgr-tab" data-tab="activity" onclick="mgrSwitchTab('activity')">📋 Activity</button>
       <button class="mgr-tab" data-tab="fix" onclick="mgrSwitchTab('fix')" style="color:#dc2626">🔧 Fix Picks</button>
       <button class="mgr-tab" data-tab="editor" onclick="mgrSwitchTab('editor')" style="color:#7c3aed">✏️ Editor</button>
+      <button class="mgr-tab" data-tab="backup" onclick="mgrSwitchTab('backup')" style="color:#059669">💾 Backup</button>
     </div>
 
     <!-- RECEIVE -->
@@ -878,6 +879,48 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       </div>
 
       <div id="ed-grid"></div>
+    </div>
+
+    <!-- BACKUP -->
+    <div id="mgr-tab-backup" class="mgr-tab-pane" style="display:none">
+      <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:12px;padding:16px;margin-bottom:14px">
+        <div style="font-weight:800;color:#065f46;margin-bottom:6px">💾 Inventory Backup</div>
+        <div style="font-size:12px;color:#065f46">
+          Download a snapshot of your current warehouse inventory. Save this file to Google Drive or email it to yourself.
+          If something ever goes wrong with the WMS, this file lets you restore everything to this exact state.
+        </div>
+      </div>
+
+      <div style="background:var(--white);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:14px">
+        <h3 style="font-size:14px;font-weight:800;margin-bottom:14px">Current State</h3>
+        <div id="bk-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px">
+          <div style="text-align:center;padding:14px;background:#f8fafc;border-radius:10px">
+            <div style="font-size:28px;font-weight:800;color:var(--navy)" id="bk-pallets">—</div>
+            <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:4px">Pallets</div>
+          </div>
+          <div style="text-align:center;padding:14px;background:#f8fafc;border-radius:10px">
+            <div style="font-size:28px;font-weight:800;color:var(--blue)" id="bk-cartons">—</div>
+            <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:4px">Cartons</div>
+          </div>
+          <div style="text-align:center;padding:14px;background:#f8fafc;border-radius:10px">
+            <div style="font-size:28px;font-weight:800;color:var(--green)" id="bk-packs">—</div>
+            <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:4px">Packs</div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-green" onclick="bkDownloadJson()" style="flex:1;min-width:200px">📥 Download JSON Backup</button>
+          <button class="btn btn-blue" onclick="bkDownloadCsv()" style="flex:1;min-width:200px">📊 Download CSV (Pallets)</button>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:10px;text-align:center">
+          File auto-names with today's date. Save to a "WMS Backups" folder on Google Drive.
+        </div>
+      </div>
+
+      <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:12px;font-size:12px;color:#78350f">
+        <b>💡 Tip:</b> Download a fresh backup after every big event — container received, big shipment, monthly count.
+        Each backup is a "save point" you can restore from if anything goes wrong.
+      </div>
     </div>
 
   </div>
@@ -3264,6 +3307,7 @@ function mgrSwitchTab(tab) {
   }
   if (tab === 'fix') fixShowPreview();
   if (tab === 'editor') edRender();
+  if (tab === 'backup') bkRender();
 }
 
 function mgrPopulateAllDropdowns() {
@@ -4388,6 +4432,98 @@ async function edConvertLoose(pallet) {
   buildInventory();
   edRender();
   if (typeof renderAll === 'function') renderAll();
+}
+
+// ─── BACKUP ───
+function bkRender() {
+  // Compute totals from current PALLET_DATA
+  var pallets = Object.keys(PALLET_DATA).filter(function(p){ return Object.keys(PALLET_DATA[p]).length > 0; });
+  var totalCtns = 0, totalPacks = 0;
+  for (var p in PALLET_DATA) {
+    for (var sku in PALLET_DATA[p]) {
+      var s = PALLET_DATA[p][sku];
+      totalCtns += s.fullCartons || 0;
+      totalPacks += (s.fullCartons || 0) * (s.ppc || 1) + (s.openPacks || 0);
+    }
+  }
+  document.getElementById('bk-pallets').textContent = pallets.length;
+  document.getElementById('bk-cartons').textContent = totalCtns.toLocaleString();
+  document.getElementById('bk-packs').textContent = totalPacks.toLocaleString();
+}
+
+function bkDateStr() {
+  var d = new Date();
+  var y = d.getFullYear();
+  var m = String(d.getMonth() + 1).padStart(2, '0');
+  var day = String(d.getDate()).padStart(2, '0');
+  var hh = String(d.getHours()).padStart(2, '0');
+  var mm = String(d.getMinutes()).padStart(2, '0');
+  return y + '-' + m + '-' + day + '_' + hh + mm;
+}
+
+function bkTriggerDownload(content, filename, mime) {
+  var blob = new Blob([content], { type: mime });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function(){
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 100);
+}
+
+function bkDownloadJson() {
+  var totalCtns = 0, totalPacks = 0, palletCount = 0;
+  for (var p in PALLET_DATA) {
+    if (Object.keys(PALLET_DATA[p]).length > 0) palletCount++;
+    for (var sku in PALLET_DATA[p]) {
+      var s = PALLET_DATA[p][sku];
+      totalCtns += s.fullCartons || 0;
+      totalPacks += (s.fullCartons || 0) * (s.ppc || 1) + (s.openPacks || 0);
+    }
+  }
+  var backup = {
+    timestamp: new Date().toISOString(),
+    note: 'WMS backup',
+    PALLET_DATA: PALLET_DATA,
+    totals: { pallets: palletCount, cartons: totalCtns, packs: totalPacks }
+  };
+  bkTriggerDownload(JSON.stringify(backup, null, 2), 'wms_backup_' + bkDateStr() + '.json', 'application/json');
+  toast('✓ Backup downloaded', 'ok');
+}
+
+function bkDownloadCsv() {
+  var rows = [['Pallet', 'SKU', 'Color', 'Size', 'PPC', 'Sealed Cartons', 'Loose Packs', 'Total Packs']];
+  var keys = Object.keys(PALLET_DATA).sort(function(a,b){ return Number(a) - Number(b); });
+  for (var i = 0; i < keys.length; i++) {
+    var p = keys[i];
+    var skus = PALLET_DATA[p];
+    var skuKeys = Object.keys(skus).sort();
+    if (skuKeys.length === 0) {
+      rows.push([p, '(empty)', '', '', '', '', '', '']);
+      continue;
+    }
+    for (var j = 0; j < skuKeys.length; j++) {
+      var sku = skuKeys[j];
+      var s = skus[sku];
+      var total = (s.fullCartons || 0) * (s.ppc || 1) + (s.openPacks || 0);
+      rows.push([p, sku, s.color || '', s.size || '', s.ppc || '', s.fullCartons || 0, s.openPacks || 0, total]);
+    }
+  }
+  var csv = rows.map(function(r){
+    return r.map(function(cell){
+      var c = String(cell);
+      if (c.indexOf(',') >= 0 || c.indexOf('"') >= 0 || c.indexOf('\n') >= 0) {
+        return '"' + c.replace(/"/g, '""') + '"';
+      }
+      return c;
+    }).join(',');
+  }).join('\n');
+  bkTriggerDownload(csv, 'wms_backup_' + bkDateStr() + '.csv', 'text/csv');
+  toast('✓ CSV downloaded', 'ok');
 }
 
 // ─── WIPE RECENT PICKS (filter-based) ───
