@@ -997,48 +997,49 @@ async function init() {
     });
 
     // ─── ONE-TIME PARTIAL WIPE: drop log entries for pallets 35+ ───
-    // Pallets 35+ were deleted from baseline; corresponding log entries are removed
-    // so they don't try to replay onto missing pallets. Entries for pallets 1-34 stay.
-    if (!localStorage.getItem('usc_wipe_35plus_done_v1')) {
-      var toWipe = livePickLog.filter(function(e){
-        var palletStr = String(e.pallets || '').trim();
-        if (!palletStr) return false;
-        // Check if ANY pallet number in the entry is >= 35
-        var nums = palletStr.split(/[,\s]+/).map(function(s){ return parseInt(s); }).filter(function(n){ return !isNaN(n); });
-        return nums.some(function(n){ return n >= 35; });
-      });
+    // ─── ONE-TIME FULL WIPE: nuke entire log to stop ghost pallets ───
+    // Backup file is the source of truth. After wipe, WMS shows exactly
+    // what's in PALLET_DATA baseline. Future picks/edits start fresh.
+    if (!localStorage.getItem('usc_full_wipe_2026_05_07')) {
+      var totalToWipe = livePickLog.length;
+      console.log('FULL WIPE: clearing all ' + totalToWipe + ' log entries from Supabase + local');
 
-      console.log('PARTIAL WIPE: clearing ' + toWipe.length + ' log entries touching pallets 35+');
-
-      var idsToDelete = toWipe.filter(function(e){ return e.id; }).map(function(e){ return e.id; });
-      if (idsToDelete.length > 0) {
+      // Delete from Supabase
+      var allIds = livePickLog.filter(function(e){ return e.id; }).map(function(e){ return e.id; });
+      if (allIds.length > 0) {
         try {
-          for (var ci = 0; ci < idsToDelete.length; ci += 100) {
-            var chunk = idsToDelete.slice(ci, ci + 100);
+          for (var ci = 0; ci < allIds.length; ci += 100) {
+            var chunk = allIds.slice(ci, ci + 100);
             await sb.from('picks').delete().in('id', chunk);
           }
         } catch(e) {
-          console.warn('Supabase partial-wipe error:', e);
+          console.error('Supabase wipe error:', e);
+          // Fallback: delete by date filter (catches any entries we couldn't see)
+          try {
+            await sb.from('picks').delete().gte('created_at', '2000-01-01');
+          } catch(e2) { console.error('Fallback wipe failed:', e2); }
         }
+      } else {
+        // No IDs — try the fallback delete-everything approach
+        try {
+          await sb.from('picks').delete().gte('created_at', '2000-01-01');
+        } catch(e) { console.warn('Bulk delete failed:', e); }
       }
 
-      // Filter local arrays
-      var wipeKeys = new Set(toWipe.map(function(e){ return e.id || (e.time + '|' + e.sku + '|' + e.packs + '|' + e.pallets); }));
-      function keep(e) {
-        var key = e.id || (e.time + '|' + e.sku + '|' + e.packs + '|' + e.pallets);
-        return !wipeKeys.has(key);
-      }
-      livePickLog = livePickLog.filter(keep);
-      txLog = txLog.filter(keep);
+      // Wipe local arrays completely
+      livePickLog = [];
+      txLog = [];
+      seenIds = new Set();
+      deletedEntries = [];
+      try { localStorage.removeItem('usc_livePickLog'); } catch(e) {}
+      try { localStorage.removeItem('usc_deletedEntries'); } catch(e) {}
 
-      try { localStorage.setItem('usc_livePickLog', JSON.stringify(livePickLog)); } catch(e) {}
-      localStorage.setItem('usc_wipe_35plus_done_v1', '1');
+      // Set flag so this never runs again
+      localStorage.setItem('usc_full_wipe_2026_05_07', '1');
 
-      if (toWipe.length > 0) {
-        setTimeout(function(){
-          toast('🧹 Cleaned ' + toWipe.length + ' entries for pallets 35+. Pallets 1-34 history kept.', 'ok');
-        }, 1500);
-      }
+      setTimeout(function(){
+        toast('🧹 Wiped ' + totalToWipe + ' log entries. Clean slate — WMS = baseline only.', 'ok');
+      }, 1500);
     }
 
     // Merge into txLog
