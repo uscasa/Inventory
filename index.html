@@ -1092,7 +1092,7 @@ function buildInventory() {
   // SNAPSHOT_DATE: log entries BEFORE this date are kept for reports
   // but NOT replayed onto pallet counts (they're history, not active stock changes).
   // The baseline already reflects the warehouse state as of this date.
-  var SNAPSHOT_DATE = '2026-05-07T00:00:00.000Z';
+  var SNAPSHOT_DATE = '2026-05-07T21:00:00.000Z';
 
   // Step 1.5: Replay manager events (receive/move/adjust/new-pallet) FIRST,
   // in chronological order (oldest first), so picks see the updated stock
