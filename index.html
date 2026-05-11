@@ -1276,9 +1276,13 @@ function buildInventory() {
     return Object.assign({}, s, { packs: s.packsIn, ctns: s.ctnsIn });
   });
 
-  // Step 4: Adjust inventory aggregate from livePickLog
+  // Step 4: Adjust inventory aggregate from livePickLog (post-snapshot only)
+  // SNAPSHOT_DATE: same filter used in Step 1.5 and Step 2.
+  // Pre-snapshot entries are history-for-reports only; baseline already reflects them.
+  var SNAPSHOT_DATE_S4 = '2026-05-07T21:00:00.000Z';
   for (var i = 0; i < livePickLog.length; i++) {
     var tx = livePickLog[i];
+    if (tx.time && tx.time < SNAPSHOT_DATE_S4) continue;
     for (var j = 0; j < inventory.length; j++) {
       if (inventory[j].sku === tx.sku) {
         if (tx.type === 'out' || tx.type === 'adj-remove') {
