@@ -911,6 +911,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           <button class="btn btn-green" onclick="bkDownloadJson()" style="flex:1;min-width:200px">📥 Download JSON Backup</button>
           <button class="btn btn-blue" onclick="bkDownloadCsv()" style="flex:1;min-width:200px">📊 Download CSV (Pallets)</button>
+          <button class="btn btn-orange" onclick="bkDownloadLogCsv()" style="flex:1;min-width:200px">📋 Download Activity Log CSV</button>
         </div>
         <div style="font-size:11px;color:var(--muted);margin-top:10px;text-align:center">
           File auto-names with today's date. Save to a "WMS Backups" folder on Google Drive.
@@ -1781,31 +1782,32 @@ function generatePlan() {
         totalCtns += s.ctns;
       });
     } else if (ch === 'Amazon FBA') {
-      // FBA: full cartons + loose remainder
-      const ctnsNeeded = Math.floor(needed / inv.ppc);
-      const remainder = needed % inv.ppc;
+      // FBA: ALWAYS prefer sealed cartons. Round UP to next sealed if needed.
+      // Only fall back to open cartons if no sealed cartons available anywhere.
+      const ctnsNeeded = Math.ceil(needed / inv.ppc);  // round UP, never split into loose
+      const sealedSources = findCartonSources(palletCopy, item.sku, ctnsNeeded);
+      let sealedPacksGot = 0;
+      sealedSources.forEach(s => {
+        steps.push({type:'fba', label:'Pallet ' + s.pallet, desc:item.sku + ' · ' + item.color + ' · ' + item.size + ' — ' + s.ctns + ' sealed carton' + (s.ctns!==1?'s':'') + ' → FBA shipment' + cappedNote});
+        totalCtns += s.ctns;
+        sealedPacksGot += s.ctns * inv.ppc;
+        cappedNote = '';
+      });
 
-      // Only pull sealed cartons if we actually need full ones
-      if (ctnsNeeded > 0) {
-        const sources = findCartonSources(palletCopy, item.sku, ctnsNeeded);
-        sources.forEach(s => {
-          steps.push({type:'fba', label:'Pallet ' + s.pallet, desc:item.sku + ' · ' + item.color + ' · ' + item.size + ' — ' + s.ctns + ' sealed carton' + (s.ctns!==1?'s':'') + ' → FBA shipment' + cappedNote});
-          totalCtns += s.ctns;
-          cappedNote = '';
-        });
-      }
-
-      // Pull remainder (or full qty if less than ppc) from open cartons
-      if (remainder > 0) {
-        const openSrc = findPalletSources(palletCopy, item.sku, remainder, true);
+      // If we couldn't get enough from sealed cartons, fall back to open packs as last resort
+      const stillNeeded = needed - sealedPacksGot;
+      if (stillNeeded > 0) {
+        const openSrc = findPalletSources(palletCopy, item.sku, stillNeeded, true);
         openSrc.forEach(s => {
-          steps.push({type:'open-ctn', label:'Pallet ' + s.pallet + ' (open)', desc:item.sku + ' — pick ' + s.packs + ' loose packs from open carton' + cappedNote});
-          cappedNote = '';
+          if (s.fromOpen) {
+            steps.push({type:'open-ctn', label:'Pallet ' + s.pallet + ' (open)', desc:item.sku + ' — pick ' + s.packs + ' loose packs from open carton (no sealed available)' + cappedNote});
+            cappedNote = '';
+          }
         });
       }
     } else {
-      // eBay / TikTok: open cartons first, then sealed
-      const sources = findPalletSources(palletCopy, item.sku, needed, false);
+      // eBay / TikTok: open cartons first (single packs common), then sealed as fallback
+      const sources = findPalletSources(palletCopy, item.sku, needed, true);
       sources.forEach(s => {
         const cls = s.fromOpen ? 'open-ctn' : 'fba';
         steps.push({type:cls, label:`Pallet ${s.pallet}${s.fromOpen?' (open)':''}`, desc:`${item.sku} · ${item.color} · ${item.size} — ${s.packs} pack${s.packs!==1?'s':''} from ${s.fromOpen?'open carton':'new carton'}`});
@@ -1860,8 +1862,10 @@ function generatePlan() {
 function findPalletSources(palletCopy, sku, needed, openFirst) {
   const sources = [];
   const pallets = Object.keys(palletCopy).map(Number).sort((a,b)=>a-b);
-  // Open cartons first
-  if (openFirst || true) {
+
+  // openFirst=true: pull from open cartons first (used for Sample/single-pack channels)
+  // openFirst=false: pull from sealed cartons first (default, preferred behavior)
+  if (openFirst === true) {
     pallets.forEach(p => {
       if (needed <= 0) return;
       const pd = palletCopy[String(p)];
@@ -1886,6 +1890,18 @@ function findPalletSources(palletCopy, sku, needed, openFirst) {
     pd[sku].fullCartons -= take;
     needed -= packsFromCtn;
   });
+  // Fall back to open cartons only if still needed AND we didn't go open-first
+  if (needed > 0 && openFirst !== true) {
+    pallets.forEach(p => {
+      if (needed <= 0) return;
+      const pd = palletCopy[String(p)];
+      if (!pd[sku] || pd[sku].openPacks <= 0) return;
+      const take = Math.min(needed, pd[sku].openPacks);
+      sources.push({pallet:p, packs:take, fromOpen:true});
+      pd[sku].openPacks -= take;
+      needed -= take;
+    });
+  }
   return sources;
 }
 
@@ -4489,14 +4505,22 @@ function bkDownloadJson() {
       totalPacks += (s.fullCartons || 0) * (s.ppc || 1) + (s.openPacks || 0);
     }
   }
+  // Include log entries for full audit trail
+  var logEntries = (typeof livePickLog !== 'undefined' && livePickLog) ? livePickLog : [];
   var backup = {
     timestamp: new Date().toISOString(),
     note: 'WMS backup',
     PALLET_DATA: PALLET_DATA,
-    totals: { pallets: palletCount, cartons: totalCtns, packs: totalPacks }
+    livePickLog: logEntries,
+    totals: {
+      pallets: palletCount,
+      cartons: totalCtns,
+      packs: totalPacks,
+      logEntries: logEntries.length
+    }
   };
   bkTriggerDownload(JSON.stringify(backup, null, 2), 'wms_backup_' + bkDateStr() + '.json', 'application/json');
-  toast('✓ Backup downloaded', 'ok');
+  toast('✓ Backup downloaded (' + logEntries.length + ' log entries)', 'ok');
 }
 
 function bkDownloadCsv() {
@@ -4531,6 +4555,48 @@ function bkDownloadCsv() {
 }
 
 // ─── WIPE RECENT PICKS (filter-based) ───
+
+function bkDownloadLogCsv() {
+  var log = (typeof livePickLog !== 'undefined' && livePickLog) ? livePickLog : [];
+  if (log.length === 0) { toast('No log entries to export', 'err'); return; }
+
+  var rows = [['Time', 'Type', 'Channel', 'SKU', 'Color', 'Size', 'Pallet', 'Cartons', 'Packs', 'PPC', 'Note']];
+
+  // Sort newest first
+  var sorted = log.slice().sort(function(a, b){
+    return (b.time || '').localeCompare(a.time || '');
+  });
+
+  for (var i = 0; i < sorted.length; i++) {
+    var e = sorted[i];
+    rows.push([
+      e.time || '',
+      e.type || '',
+      e.channel || '',
+      e.sku || '',
+      e.color || '',
+      e.size || '',
+      e.pallets || '',
+      e.ctns || 0,
+      e.packs || 0,
+      e.ppc || '',
+      e.note || ''
+    ]);
+  }
+
+  var csv = rows.map(function(r){
+    return r.map(function(cell){
+      var c = String(cell);
+      if (c.indexOf(',') >= 0 || c.indexOf('"') >= 0 || c.indexOf('\n') >= 0) {
+        return '"' + c.replace(/"/g, '""') + '"';
+      }
+      return c;
+    }).join(',');
+  }).join('\n');
+
+  bkTriggerDownload(csv, 'wms_activity_log_' + bkDateStr() + '.csv', 'text/csv');
+  toast('✓ Activity log CSV downloaded (' + log.length + ' entries)', 'ok');
+}
 
 function fixGetMatchingEntries() {
   var channel = document.getElementById('fix-channel').value;
