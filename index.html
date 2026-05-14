@@ -1023,8 +1023,8 @@ async function init() {
 
     if (error) throw error;
 
-    // Map Supabase rows to our log format
-    livePickLog = data.map(function(r) {
+    // Map Supabase rows to our log format, skipping any IDs in deletedIds blocklist
+    livePickLog = data.filter(function(r){ return !deletedIds.has(r.id); }).map(function(r) {
       return {
         id:      r.id,
         time:    r.created_at,
@@ -1084,6 +1084,7 @@ async function init() {
       var added = false;
       data.forEach(function(r) {
         if (seenIds.has(r.id)) return;  // already know about this one
+        if (deletedIds.has(r.id)) return;  // user deleted it, don't re-add
         // Also check if this matches a local entry we just inserted (no ID yet)
         var localMatch = livePickLog.some(function(t) {
           return !t.id && t.sku === r.sku && t.packs === r.packs && t.channel === r.channel &&
@@ -3108,6 +3109,13 @@ function clearCSV() {
 // LOG EDIT & RECYCLE BIN
 // ══════════════════════════════════════════════════════════════
 var deletedEntries = []; // recycle bin
+var deletedIds = new Set(); // IDs that should never be re-added by polling
+try {
+  var savedDeleted = localStorage.getItem('usc_deletedEntries');
+  if (savedDeleted) deletedEntries = JSON.parse(savedDeleted);
+  var savedDeletedIds = localStorage.getItem('usc_deletedIds');
+  if (savedDeletedIds) deletedIds = new Set(JSON.parse(savedDeletedIds));
+} catch(e) {}
 var editingLogIdx = -1;
 
 function editLogEntry(idx) {
@@ -3171,17 +3179,38 @@ async function deleteLogEntry(idx) {
 
   // Move to recycle bin FIRST
   deletedEntries.unshift(Object.assign({}, t, {deletedAt: new Date().toISOString()}));
+  try { localStorage.setItem('usc_deletedEntries', JSON.stringify(deletedEntries)); } catch(e) {}
 
   // Delete from Supabase
   if (t.id) {
     const { error } = await sb.from('picks').delete().eq('id', t.id);
     if (error) { toast('Error deleting from Supabase: ' + error.message, 'err'); return; }
+  } else {
+    // Entry has no ID yet — try to find it in Supabase by sku+packs+time match
+    try {
+      var timeWindow = new Date(t.time);
+      var startTime = new Date(timeWindow.getTime() - 5000).toISOString();
+      var endTime = new Date(timeWindow.getTime() + 5000).toISOString();
+      var { data } = await sb.from('picks').select('id').eq('sku', t.sku).eq('packs', t.packs).eq('channel', t.channel)
+        .gte('created_at', startTime).lte('created_at', endTime).limit(1);
+      if (data && data.length > 0) {
+        await sb.from('picks').delete().eq('id', data[0].id);
+        // Also mark this id as already-seen so polling skips it
+        seenIds.add(data[0].id);
+      }
+    } catch(e) { console.warn('Lookup delete failed:', e); }
   }
 
   // Remove from txLog and livePickLog
   txLog.splice(idx, 1);
   const li = livePickLog.findIndex(function(x){ return x === t || (t.id && x.id === t.id); });
   if (li > -1) livePickLog.splice(li, 1);
+
+  // Track in a "deleted IDs" blocklist so polling never re-adds them
+  if (t.id) {
+    deletedIds.add(t.id);
+    try { localStorage.setItem('usc_deletedIds', JSON.stringify(Array.from(deletedIds))); } catch(e) {}
+  }
 
   try { localStorage.setItem('usc_livePickLog', JSON.stringify(livePickLog)); } catch(e) {}
 
@@ -3232,7 +3261,12 @@ async function restoreEntry(idx) {
   livePickLog.unshift(restored);
   deletedEntries.splice(idx, 1);
 
+  // Remove old ID from deletedIds blocklist (entry is back, not deleted anymore)
+  if (t.id) deletedIds.delete(t.id);
+
   try { localStorage.setItem('usc_livePickLog', JSON.stringify(livePickLog)); } catch(e) {}
+  try { localStorage.setItem('usc_deletedEntries', JSON.stringify(deletedEntries)); } catch(e) {}
+  try { localStorage.setItem('usc_deletedIds', JSON.stringify(Array.from(deletedIds))); } catch(e) {}
 
   buildInventory();
   renderAll();
