@@ -1850,26 +1850,22 @@ function generatePlan() {
       // Step B: Handle remainder (less than 1 full carton)
       let stillNeeded = needed - sealedPacksGot;
       if (stillNeeded > 0) {
-        // First try OPEN packs (don't crack a new carton if loose packs are available)
-        const openSrc = findPalletSources(palletCopy, item.sku, stillNeeded, true);
-        openSrc.forEach(s => {
-          if (s.fromOpen) {
-            steps.push({type:'open-ctn', label:'Pallet ' + s.pallet + ' (open)', desc:item.sku + ' · ' + item.color + ' · ' + item.size + ' — pick ' + s.packs + ' loose pack' + (s.packs!==1?'s':'') + ' from EXISTING open carton' + cappedNote});
-            stillNeeded -= s.packs;
-            cappedNote = '';
-          } else {
-            // findPalletSources may also return sealed for remaining - count it
-            steps.push({type:'fba', label:'Pallet ' + s.pallet, desc:item.sku + ' · ' + item.color + ' · ' + item.size + ' — ' + s.ctns + ' sealed carton' + (s.ctns!==1?'s':'') + cappedNote});
-            totalCtns += s.ctns;
-            stillNeeded -= s.packs;
-            cappedNote = '';
-          }
-        });
+        // Try EXISTING open packs first (don't crack a new carton if loose packs are available)
+        // Pull manually so we don't accidentally invoke the sealed fallback inside findPalletSources
+        const pallets = Object.keys(palletCopy).map(Number).sort((a,b) => a - b);
+        for (const p of pallets) {
+          if (stillNeeded <= 0) break;
+          const pd = palletCopy[String(p)];
+          if (!pd[item.sku] || pd[item.sku].openPacks <= 0) continue;
+          const take = Math.min(stillNeeded, pd[item.sku].openPacks);
+          steps.push({type:'open-ctn', label:'Pallet ' + p + ' (open)', desc:item.sku + ' · ' + item.color + ' · ' + item.size + ' — pick ' + take + ' loose pack' + (take!==1?'s':'') + ' from EXISTING open carton' + cappedNote});
+          pd[item.sku].openPacks -= take;
+          stillNeeded -= take;
+          cappedNote = '';
+        }
 
-        // If STILL need packs and no open carton existed, find a sealed and CRACK it
+        // If STILL need packs, CRACK a sealed carton (explicit instruction)
         if (stillNeeded > 0) {
-          // Find a pallet with a sealed carton of this SKU
-          const pallets = Object.keys(palletCopy).map(Number).sort((a,b) => a - b);
           for (const p of pallets) {
             if (stillNeeded <= 0) break;
             const pd = palletCopy[String(p)];
