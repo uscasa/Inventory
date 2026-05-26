@@ -1019,7 +1019,8 @@ async function init() {
     const { data, error } = await sb
       .from('picks')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(50000);
 
     if (error) throw error;
 
@@ -1118,12 +1119,11 @@ async function init() {
   // Poll Supabase every 5 seconds for new picks from other team members
   setInterval(async function() {
     try {
-      var lastTime = livePickLog.length > 0 ? livePickLog[0].time : '1970-01-01';
       var { data, error } = await sb
         .from('picks')
         .select('*')
-        .gt('created_at', lastTime)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(50000);
       if (error || !data || !data.length) return;
       var added = false;
       data.forEach(function(r) {
