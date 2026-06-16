@@ -1197,14 +1197,21 @@ function buildInventory() {
       var pk = String(mtx.pallets || mtx.pallet || '');
       if (!pk) continue;
       if (!PALLET_DATA[pk]) PALLET_DATA[pk] = {};
+      // FIX: resolve ppc from the hardcoded catalog (BASE_INV), never from the
+      // log entry. Adjustment rows do not round-trip ppc through Supabase, so
+      // trusting mtx.ppc here defaulted to 1 and re-inflated packs into cartons.
+      var _br = null;
+      for (var _bi = 0; _bi < BASE_INV.length; _bi++) { if (BASE_INV[_bi].sku === mtx.sku) { _br = BASE_INV[_bi]; break; } }
+      var canonPpc = (_br && _br.ppc) || mtx.ppc || 1;
       if (!PALLET_DATA[pk][mtx.sku]) {
         PALLET_DATA[pk][mtx.sku] = {
-          fullCartons: 0, openPacks: 0, ppc: mtx.ppc || 1,
-          color: mtx.color || '', size: mtx.size || '', po: mtx.po || ''
+          fullCartons: 0, openPacks: 0, ppc: canonPpc,
+          color: mtx.color || (_br && _br.color) || '', size: mtx.size || (_br && _br.size) || '', po: mtx.po || (_br && _br.po) || ''
         };
       }
       var slot = PALLET_DATA[pk][mtx.sku];
-      var ppc = mtx.ppc || slot.ppc || 1;
+      slot.ppc = canonPpc;
+      var ppc = canonPpc;
       var addCtns = mtx.ctns || 0;
       var addPacks = mtx.packs || 0;
       // Split: if ctns is set, that's the sealed ctns. Remaining packs (after ctns*ppc) is loose.
@@ -1223,7 +1230,10 @@ function buildInventory() {
       var pk = String(mtx.pallets || mtx.pallet || '');
       if (!pk || !PALLET_DATA[pk] || !PALLET_DATA[pk][mtx.sku]) continue;
       var slot = PALLET_DATA[pk][mtx.sku];
-      var ppc = slot.ppc || mtx.ppc || 1;
+      var _br2 = null;
+      for (var _bi2 = 0; _bi2 < BASE_INV.length; _bi2++) { if (BASE_INV[_bi2].sku === mtx.sku) { _br2 = BASE_INV[_bi2]; break; } }
+      var ppc = (_br2 && _br2.ppc) || slot.ppc || mtx.ppc || 1;
+      slot.ppc = ppc;
       var rem = mtx.packs || 0;
       // Drain openPacks first
       var takeOpen = Math.min(rem, slot.openPacks);
